@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Enum, List, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 MAX_NUM_OF_TRANSACTIONS_TO_RETURN: int = 100
 DEFAULT_SIZE_OF_PAGE: int = 20
@@ -18,6 +19,7 @@ class SupraAccountData:
     auth_key: str
     sequece_number: int
 
+    @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SupraAccountData":
         return cls(
             auth_key=data["auth_key"], sequece_number=int(data["sequece_number"])
@@ -25,11 +27,6 @@ class SupraAccountData:
 
     def to_dict(self) -> Dict[str, Any]:
         return {"auth_key": self.auth_key, "sequece_number": self.sequece_number}
-
-
-# @dataclass
-# class SupraTransaction:
-#     """Transaction data for Supra v3 api"""
 
 
 @dataclass
@@ -47,6 +44,15 @@ class AccountCoinTxPaginationWithOrder:
     # If `true`, transactions are returned in ascending order of their execution.
     ascending: bool = False
 
+    def to_params(self) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if self.count is not None:
+            params["count"] = self.count
+        if self.start is not None:
+            params["start"] = self.start
+        params["ascending"] = str(self.ascending).lower()
+        return params
+
 
 @dataclass
 class AccountPublishedListPagination:
@@ -55,7 +61,15 @@ class AccountPublishedListPagination:
 
     # Cursor specifying where to start for pagination.
     # Use the cursor returned by the API when making the next request.
-    start: Optional[List(int)] = None
+    start: Optional[List[int]] = None
+
+    def to_params(self) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if self.count is not None:
+            params["count"] = self.count
+        if self.start is not None:
+            params["start"] = self.start
+        return params
 
 
 @dataclass
@@ -83,7 +97,7 @@ class AccountAutomatedTxPagination:
     ascending: bool = False
 
     def to_params(self) -> Dict[str, Any]:
-        params = {}
+        params: Dict[str, Any] = {}
         if self.count is not None:
             params["count"] = self.count
         if self.block_height is not None:
@@ -112,7 +126,7 @@ class AccountTxPaginationWithOrder:
     ascending: bool = False
 
     def to_params(self) -> Dict[str, Any]:
-        params = {}
+        params: Dict[str, Any] = {}
         if self.count is not None:
             params["count"] = self.count
         if self.start is not None:
