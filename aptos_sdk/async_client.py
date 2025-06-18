@@ -1,40 +1,20 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-import asyncio
-import logging
-import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 import python_graphql_client
 
-from .account import Account
 from .account_address import AccountAddress
-from .authenticator import Authenticator, MultiAgentAuthenticator
-from .bcs import Serializer
 from .metadata import Metadata
-from .transactions import (
-    EntryFunction,
-    MultiAgentRawTransaction,
-    RawTransaction,
-    SignedTransaction,
-    TransactionArgument,
-    TransactionPayload,
-)
-from .type_tag import StructTag, TypeTag
 from .types import (
-    AccountPublishedListPagination,
-    AccountCoinTxPaginationWithOrder,
     AccountAutomatedTxPagination,
+    AccountCoinTxPaginationWithOrder,
+    AccountPublishedListPagination,
+    AccountTxPaginationWithOrder,
     SupraRestAcceptType,
-    AccountTxPaginationWithOrder
-    #         DEFAULT_SIZE_OF_PAGE,
-    #     MAX_NUM_OF_TRANSACTIONS_TO_RETURN,
-    #     AccountAutomatedTxPagination,
-    #     AccountTxPaginationWithOrder,
-    #     SupraAccountData,
 )
 
 U64_MAX = 18446744073709551615
@@ -95,8 +75,7 @@ class RestClient:
         self.client_config = client_config
         self._chain_id = None
         if client_config.api_key:
-            self.client.headers["Authorization"] = f"Bearer {
-                client_config.api_key}"
+            self.client.headers["Authorization"] = f"Bearer {client_config.api_key}"
 
     async def close(self):
         await self.client.aclose()
@@ -123,27 +102,29 @@ class RestClient:
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
 
         if resp.status_code >= 400:
-            rasie ApiError(f"{response.text} - {account_address}, {resp.status_code} ")
-        resp.json()
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        return resp.json()
 
     async def get_account_transaction_v3(
         self,
         account_address: AccountAddress,
         pagination_with_order: Optional[AccountTxPaginationWithOrder] = None,
-        accept_type: str = SupraRestAcceptType.JSON.value
+        accept_type: str = SupraRestAcceptType.JSON.value,
     ) -> Dict[str, Any]:
         self._check_accept_type(
-            accept_type, [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value])
+            accept_type,
+            [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
+        )
 
-        endpoint = f"rpc/v3/accounts/{address}/transactions"
+        endpoint = f"rpc/v3/accounts/{account_address}/transactions"
         headers = {"Accept": accept_type}
         params = pagination_with_order.to_params() if pagination_with_order else {}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
         if resp.status_code >= 400:
-            rasie ApiError(f"{response.text} - {account_address}, {resp.status_code} ")
-        resp.json()
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        return resp.json()
 
     async def get_account_automated_transactions_v3(
         self,
@@ -175,10 +156,12 @@ class RestClient:
         account_address: AccountAddress,
         pagination: Optional[AccountCoinTxPaginationWithOrder] = None,
         # txn_type: None,
-        accept_type: str = SupraRestAcceptType.JSON.value
+        accept_type: str = SupraRestAcceptType.JSON.value,
     ) -> Dict[str, Any]:
         self._check_accept_type(
-            accept_type, [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value])
+            accept_type,
+            [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
+        )
         endpoint = f"rpc/v3/accounts/{account_address}/coin_transactions"
         headers = {"Accept": accept_type}
         params = pagination.to_params() if pagination else {}
@@ -186,17 +169,19 @@ class RestClient:
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
         if resp.status_code >= 400:
-            rasie ApiError(f"{response.text} - {account_address}, {resp.status_code} ")
-        resp.json()
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        return resp.json()
 
     async def get_account_resources_v3(
         self,
         account_address: AccountAddress,
         pagination: Optional[AccountPublishedListPagination] = None,
-        accept_type: str = SupraRestAcceptType.JSON.value
+        accept_type: str = SupraRestAcceptType.JSON.value,
     ) -> Dict[str, Any]:
         self._check_accept_type(
-            accept_type, [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value])
+            accept_type,
+            [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
+        )
         endpoint = f"rpc/v3/accounts/{account_address}/resources"
         headers = {"Accept": accept_type}
         params = pagination.to_params() if pagination else {}
@@ -204,17 +189,19 @@ class RestClient:
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
         if resp.status_code >= 400:
-            rasie ApiError(f"{response.text} - {account_address}, {resp.status_code} ")
-        resp.json()
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        return resp.json()
 
     async def get_account_modules_v3(
         self,
         account_address: AccountAddress,
         pagination: Optional[AccountPublishedListPagination] = None,
-        accept_type: str = SupraRestAcceptType.JSON.value
+        accept_type: str = SupraRestAcceptType.JSON.value,
     ) -> Dict[str, Any]:
         self._check_accept_type(
-            accept_type, [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value])
+            accept_type,
+            [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
+        )
         endpoint = f"rpc/v3/accounts/{account_address}/modules"
         headers = {"Accept": accept_type}
         params = pagination.to_params() if pagination else {}
@@ -222,13 +209,13 @@ class RestClient:
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
         if resp.status_code >= 400:
-            rasie ApiError(f"{response.text} - {account_address}, {resp.status_code} ")
-        resp.json()
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        return resp.json()
 
     async def get_account_specific_resource_v3(
         self,
-        path_param: (AccountAddress, str),
-        accept_type: str = SupraRestAcceptType.JSON.value
+        path_param: Tuple[AccountAddress, str],
+        accept_type: str = SupraRestAcceptType.JSON.value,
     ) -> Dict[str, Any]:
         self._check_accept_type(accept_type, [SupraRestAcceptType.OCTET.value])
         address, tag_string = path_param[0], path_param[1]
@@ -237,13 +224,13 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
         if resp.status_code >= 400:
-            rasie ApiError(f"{response.text} - {account_address}, {resp.status_code} ")
-        resp.json()
+            raise ApiError(f"{resp.text} - {address}", resp.status_code)
+        return resp.json()
 
     async def get_account_specific_modules_v3(
         self,
-        path_param: (AccountAddress, str),
-        accept_type: str = SupraRestAcceptType.JSON.value
+        path_param: Tuple[AccountAddress, str],
+        accept_type: str = SupraRestAcceptType.JSON.value,
     ) -> Dict[str, Any]:
         self._check_accept_type(accept_type, [SupraRestAcceptType.OCTET.value])
         address, module_name = path_param[0], path_param[1]
@@ -252,8 +239,8 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
         if resp.status_code >= 400:
-            rasie ApiError(f"{response.text} - {account_address}, {resp.status_code} ")
-        resp.json()
+            raise ApiError(f"{resp.text} - {address}", resp.status_code)
+        return resp.json()
 
     ###########
     # HELPERS #
@@ -276,15 +263,16 @@ class RestClient:
         )
 
     async def _get(
-        self, endpoint: str, headers: Optional[Dict(str, str)] = None, params: Optional[Dict[str, Any]] = None
+        self,
+        endpoint: str,
+        headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
     ) -> httpx.Response:
         # format params:
         params = {} if params is None else params
         params = {key: val for key, val in params.items() if val is not None}
         return await self.client.get(
-            url=f"{self.base_url}/{endpoint}",
-            params=params,
-            headers=headers
+            url=f"{self.base_url}/{endpoint}", params=params, headers=headers
         )
 
     def _check_accept_type(self, accept_type: str, unsupported: List[str]) -> None:
