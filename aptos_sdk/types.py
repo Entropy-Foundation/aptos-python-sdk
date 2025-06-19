@@ -19,23 +19,6 @@ class TransactionType(str, Enum):
 
 
 @dataclass
-class SupraAccountData:
-    """Account Data from Supra v3 api"""
-
-    auth_key: str
-    sequece_number: int
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SupraAccountData":
-        return cls(
-            auth_key=data["auth_key"], sequece_number=int(data["sequece_number"])
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"auth_key": self.auth_key, "sequece_number": self.sequece_number}
-
-
-@dataclass
 class AccountCoinTxPaginationWithOrder:
     # Maximum number of items to return. Default is 20.
     count: Optional[int] = None
@@ -138,4 +121,32 @@ class AccountTxPaginationWithOrder:
         if self.start is not None:
             params["start"] = self.start
         params["ascending"] = str(self.ascending).lower()
+        return params
+
+
+class EventQuery:
+    # Starting block height (inclusive). Optional.
+    start_height: Optional[int]
+
+    # Ending block height (exclusive). Optional.
+    end_height: Optional[int]
+
+    # Maximum number of events to return. Defaults to 20, max 100.
+    limit: Optional[int]
+
+    # The cursor to start the query from. Optional.
+    # During a paginated query, the cursor returned in the `X_SUPRA_CURSOR` response header
+    # should be specified as the `start` parameter of the request for the next page.
+    start: Optional[str] = None
+
+    def to_params(self) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if self.start_height is not None:
+            params["start_height"] = self.start_height
+        if self.end_height is not None:
+            params["end_height"] = self.end_height
+        if self.limit is not None:
+            params["limit"] = self.limit
+        if self.start is not None:
+            params["start"] = self.start
         return params
