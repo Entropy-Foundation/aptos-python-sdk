@@ -325,6 +325,18 @@ class RestClient:
             raise ApiError(f"{resp.text} - {block_hash}", resp.status)
         return resp.json()
 
+    ########
+    # VIEW #
+    ########
+
+    async def view_function(self, data: Union[Dict[str, Any], bytes]) -> Dict[str, Any]:
+        endpoint = "rpc/v3/view"
+
+        resp = await self._post(endpoint=endpoint, data=data)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {data}", resp.status)
+        return resp.json()
+
     ###########
     # HELPERS #
     ###########
