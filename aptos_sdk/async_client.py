@@ -15,6 +15,7 @@ from .types import (
     AccountPublishedListPagination,
     AccountTxPaginationWithOrder,
     SupraRestAcceptType,
+    TransactionType,
 )
 
 U64_MAX = 18446744073709551615
@@ -271,6 +272,57 @@ class RestClient:
         resp = await self._post(endpoint=endpoint, data=transaction_data)
         if resp.status >= 400:
             raise ApiError(f"{resp.text} - {transaction_data}", resp.status)
+        return resp.json()
+
+    ##########
+    # BLOCKS #
+    ##########
+    async def latest_block(self) -> Dict[str, Any]:
+        endpoint = "rpc/v3/block"
+
+        resp = await self._get(endpoint=endpoint)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - NIL", resp.status)
+        return resp.json()
+
+    async def block_info_by_hash(self, block_hash: str) -> Dict[str, Any]:
+        endpoint = f"rpc/v3/block/{block_hash}"
+
+        resp = await self._get(endpoint=endpoint)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {block_hash}", resp.status)
+        return resp.json()
+
+    async def block_by_height(
+        self,
+        height: int,
+        transaction_type: Optional[TransactionType] = None,
+        with_finalized_transaction: bool = False,
+    ) -> Dict[str, Any]:
+        endpoint = f"rpc/v3/block/height/{height}"
+
+        params = {"with_finalized_transactions": with_finalized_transaction}
+
+        if transaction_type is not None:
+            params["transaction_type"] = transaction_type.value
+
+        resp = await self._get(endpoint=endpoint, params=params)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {height}", resp.status)
+        return resp.json()
+
+    async def txs_by_block(
+        self, block_hash: str, transaction_type: Optional[TransactionType] = None
+    ) -> Dict[str, Any]:
+        endpoint = f"rpc/v3/block/{block_hash}/transactions"
+
+        params = {}
+        if transaction_type is not None:
+            params["transaction_type"] = transaction_type.value
+
+        resp = await self._get(endpoint=endpoint, params=params)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {block_hash}", resp.status)
         return resp.json()
 
     ###########
