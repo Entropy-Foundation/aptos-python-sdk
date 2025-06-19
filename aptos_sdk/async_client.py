@@ -14,6 +14,7 @@ from .types import (
     AccountCoinTxPaginationWithOrder,
     AccountPublishedListPagination,
     AccountTxPaginationWithOrder,
+    EventQuery,
     SupraRestAcceptType,
     TransactionType,
 )
@@ -335,6 +336,22 @@ class RestClient:
         resp = await self._post(endpoint=endpoint, data=data)
         if resp.status >= 400:
             raise ApiError(f"{resp.text} - {data}", resp.status)
+        return resp.json()
+
+    ##########
+    # EVENTS #
+    ##########
+
+    async def events_by_type(
+        self, event_type: str, query: Optional[EventQuery] = None
+    ) -> Dict[str, Any]:
+        endpoint = f"rpc/v3/events/{event_type}"
+
+        params = query.to_params() if query is not None else {}
+
+        resp = await self._get(endpoint=endpoint, params=params)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {event_type} || {query}", resp.status)
         return resp.json()
 
     ###########
