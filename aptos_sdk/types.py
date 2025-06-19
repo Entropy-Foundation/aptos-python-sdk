@@ -12,6 +12,12 @@ class SupraRestAcceptType(str, Enum):
     BCS = "application/x-bcs"
 
 
+class TransactionType(str, Enum):
+    AUTO = "auto"
+    USER = "user"
+    META = "meta"
+
+
 @dataclass
 class SupraAccountData:
     """Account Data from Supra v3 api"""
