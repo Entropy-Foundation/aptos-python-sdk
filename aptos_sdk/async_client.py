@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import httpx
 import python_graphql_client
@@ -101,8 +101,8 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
 
-        if resp.status_code >= 400:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
     async def get_account_transaction_v3(
@@ -122,8 +122,8 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status_code >= 400:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
     async def get_account_automated_transactions_v3(
@@ -168,8 +168,8 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status_code >= 400:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
     async def get_account_resources_v3(
@@ -188,8 +188,8 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status_code >= 400:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
     async def get_account_modules_v3(
@@ -208,8 +208,8 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status_code >= 400:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
     async def get_account_specific_resource_v3(
@@ -223,8 +223,8 @@ class RestClient:
         headers = {"Accept": accept_type}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
-        if resp.status_code >= 400:
-            raise ApiError(f"{resp.text} - {address}", resp.status_code)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {address}", resp.status)
         return resp.json()
 
     async def get_account_specific_modules_v3(
@@ -238,29 +238,73 @@ class RestClient:
         headers = {"Accept": accept_type}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
-        if resp.status_code >= 400:
-            raise ApiError(f"{resp.text} - {address}", resp.status_code)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {address}", resp.status)
+        return resp.json()
+
+    ################
+    # TRANSACTIONS #
+    ################
+    async def transaction_by_hash(self, hash: str) -> Dict[str, Any]:
+        endpoint = f"rpc/v3/transactions/{hash}"
+
+        resp = await self._get(endpoint=endpoint)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {hash}", resp.status)
+        return resp.json()
+
+    async def submit_txn(
+        self, transaction_data: Union[Dict[str, Any], bytes]
+    ) -> Dict[str, Any]:
+        endpoint = "rpc/v3/transactions/submit"
+
+        resp = await self._post(endpoint=endpoint, data=transaction_data)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {transaction_data}", resp.status)
+        return resp.json()
+
+    async def simulate_tx(
+        self, transaction_data: Union[Dict[str, Any], bytes]
+    ) -> Dict[str, Any]:
+        endpoint = "rpc/v3/transactions/simulate"
+
+        resp = await self._post(endpoint=endpoint, data=transaction_data)
+        if resp.status >= 400:
+            raise ApiError(f"{resp.text} - {transaction_data}", resp.status)
         return resp.json()
 
     ###########
     # HELPERS #
     ###########
+
     async def _post(
         self,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[Union[Dict[str, Any], bytes]] = None,
     ) -> httpx.Response:
         # format params:
         params = {} if params is None else params
         params = {key: val for key, val in params.items() if val is not None}
-        return await self.client.post(
-            url=f"{self.base_url}/{endpoint}",
-            params=params,
-            headers=headers,
-            json=data,
-        )
+
+        headers = headers or {}
+        if isinstance(data, bytes):
+            headers["content-type"] = "application/x.supra.signed_transaction.bcs"
+            return await self.client.post(
+                url=f"{self.base_url}/{endpoint}",
+                params=params,
+                headers=headers,
+                content=data,
+            )
+        else:
+            # JSON params / None
+            return await self.client.post(
+                url=f"{self.base_url}/{endpoint}",
+                params=params,
+                headers=headers,
+                json=data,
+            )
 
     async def _get(
         self,
