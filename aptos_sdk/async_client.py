@@ -154,7 +154,7 @@ class RestClient:
     # ACCOUNT #
     ###########
 
-    async def get_account(
+    async def account(
         self,
         account_address: AccountAddress,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
@@ -179,12 +179,27 @@ class RestClient:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_transaction(
+    async def account_transaction(
         self,
         account_address: AccountAddress,
         pagination_with_order: Optional[AccountTxPaginationWithOrder] = None,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
+        """
+        Fetches transactions associated with a given account.
+
+        Args:
+            account_address (AccountAddress): The account whose transactions to fetch.
+            pagination_with_order (Optional[AccountTxPaginationWithOrder]): Pagination options.
+            accept_type (str): Desired content type of the response.
+
+        Returns:
+            Dict[str, Any]: JSON response containing account transactions.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         self._check_accept_type(
             accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
@@ -200,14 +215,30 @@ class RestClient:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_automated_transactions(
+    async def account_automated_transactions(
         self,
         address: AccountAddress,
         pagination: Optional[AccountAutomatedTxPagination] = None,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
         # TODO: Add return type
     ):
-        """GET /rpc/v3/accounts/{address}/automated_transactions"""
+        """
+        Fetches automated transactions for a given account.
+
+        Args:
+            address (AccountAddress): The account address.
+            pagination (Optional[AccountAutomatedTxPagination]): Pagination options.
+            accept_type (str): Desired content type of the response.
+
+        Returns:
+            Tuple[Dict[str, Any], str]: A tuple containing:
+                - JSON response with transactions.
+                - Cursor for fetching the next page.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         self._check_accept_type(
             accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
@@ -232,6 +263,21 @@ class RestClient:
         # txn_type: None,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
+        """
+        Fetches coin-specific transactions for a given account.
+
+        Args:
+            account_address (AccountAddress): The account address.
+            pagination (Optional[AccountCoinTxPaginationWithOrder]): Pagination options.
+            accept_type (str): Desired content type of the response.
+
+        Returns:
+            Dict[str, Any]: JSON response containing coin transactions.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         self._check_accept_type(
             accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
@@ -246,12 +292,27 @@ class RestClient:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_resources(
+    async def account_resources(
         self,
         account_address: AccountAddress,
         pagination: Optional[AccountPublishedListPagination] = None,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
+        """
+        Fetches the full list of resources associated with an account.
+
+        Args:
+            account_address (AccountAddress): The account address.
+            pagination (Optional[AccountPublishedListPagination]): Pagination options.
+            accept_type (str): Desired content type of the response.
+
+        Returns:
+            Dict[str, Any]: JSON response containing account resources.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         self._check_accept_type(
             accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
@@ -266,12 +327,27 @@ class RestClient:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_modules(
+    async def account_modules(
         self,
         account_address: AccountAddress,
         pagination: Optional[AccountPublishedListPagination] = None,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
+        """
+        Fetches the Move modules published under a given account.
+
+        Args:
+            account_address (AccountAddress): The account address.
+            pagination (Optional[AccountPublishedListPagination]): Pagination options.
+            accept_type (str): Desired content type of the response.
+
+        Returns:
+            Dict[str, Any]: JSON response containing the list of modules.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         self._check_accept_type(
             accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
@@ -286,11 +362,25 @@ class RestClient:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_specific_resource(
+    async def account_specific_resource(
         self,
         path_param: Tuple[AccountAddress, str],
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
+        """
+        Fetches a specific resource from an account.
+
+        Args:
+            path_param (Tuple[AccountAddress, str]): A tuple of (address, resource_struct_tag).
+            accept_type (str): Desired content type of the response.
+
+        Returns:
+            Dict[str, Any]: JSON response containing the specific resource.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         self._check_accept_type(accept_type.value, [SupraRestAcceptType.OCTET.value])
         address, tag_string = path_param[0], path_param[1]
         endpoint = f"rpc/v3/accounts/{address}/resources/{tag_string}"
@@ -301,11 +391,25 @@ class RestClient:
             raise ApiError(f"{resp.text} - {address}", resp.status)
         return resp.json()
 
-    async def get_account_specific_modules(
+    async def account_specific_modules(
         self,
         path_param: Tuple[AccountAddress, str],
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
+        """
+        Fetches a specific module from an account.
+
+        Args:
+            path_param (Tuple[AccountAddress, str]): A tuple of (address, module_name).
+            accept_type (str): Desired content type of the response.
+
+        Returns:
+            Dict[str, Any]: JSON response containing the specific module.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         self._check_accept_type(accept_type.value, [SupraRestAcceptType.OCTET.value])
         address, module_name = path_param[0], path_param[1]
         endpoint = f"rpc/v3/accounts/{address}/modules/{module_name}"
@@ -320,6 +424,19 @@ class RestClient:
     # TRANSACTIONS #
     ################
     async def transaction_by_hash(self, hash: str) -> Dict[str, Any]:
+        """
+        Fetches a transaction by its hash.
+
+        Args:
+            hash (str): The hash of the transaction.
+
+        Returns:
+            Dict[str, Any]: JSON response containing transaction details.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         endpoint = f"rpc/v3/transactions/{hash}"
 
         resp = await self._get(endpoint=endpoint)
@@ -330,6 +447,19 @@ class RestClient:
     async def submit_txn(
         self, transaction_data: Union[Dict[str, Any], bytes]
     ) -> Dict[str, Any]:
+        """
+        Submits a signed transaction for execution.
+
+        Args:
+            transaction_data (Union[Dict[str, Any], bytes]): The transaction payload.
+
+        Returns:
+            Dict[str, Any]: JSON response from the API.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         endpoint = "rpc/v3/transactions/submit"
 
         resp = await self._post(endpoint=endpoint, data=transaction_data)
@@ -340,6 +470,19 @@ class RestClient:
     async def simulate_tx(
         self, transaction_data: Union[Dict[str, Any], bytes]
     ) -> Dict[str, Any]:
+        """
+        Simulates a transaction without submitting it to the chain.
+
+        Args:
+            transaction_data (Union[Dict[str, Any], bytes]): The transaction payload.
+
+        Returns:
+            Dict[str, Any]: JSON simulation result.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         endpoint = "rpc/v3/transactions/simulate"
 
         resp = await self._post(endpoint=endpoint, data=transaction_data)
@@ -638,6 +781,16 @@ class RestClient:
     # BLOCKS #
     ##########
     async def latest_block(self) -> Dict[str, Any]:
+        """
+        Fetches the latest block from the blockchain.
+
+        Returns:
+            Dict[str, Any]: JSON response containing latest block information.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         endpoint = "rpc/v3/block"
 
         resp = await self._get(endpoint=endpoint)
@@ -646,6 +799,19 @@ class RestClient:
         return resp.json()
 
     async def block_info_by_hash(self, block_hash: str) -> Dict[str, Any]:
+        """
+        Fetches block information using a block hash.
+
+        Args:
+            block_hash (str): The hash of the block.
+
+        Returns:
+            Dict[str, Any]: JSON response containing block info.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         endpoint = f"rpc/v3/block/{block_hash}"
 
         resp = await self._get(endpoint=endpoint)
@@ -659,6 +825,21 @@ class RestClient:
         transaction_type: Optional[TransactionType] = None,
         with_finalized_transaction: bool = False,
     ) -> Dict[str, Any]:
+        """
+        Fetches block data by height with optional transaction filtering.
+
+        Args:
+            height (int): The height of the block.
+            transaction_type (Optional[TransactionType]): Filter transactions by type.
+            with_finalized_transaction (bool): Whether to include finalized transactions.
+
+        Returns:
+            Dict[str, Any]: JSON response with block data.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         endpoint = f"rpc/v3/block/height/{height}"
 
         params = {"with_finalized_transactions": with_finalized_transaction}
@@ -674,6 +855,20 @@ class RestClient:
     async def txs_by_block(
         self, block_hash: str, transaction_type: Optional[TransactionType] = None
     ) -> Dict[str, Any]:
+        """
+        Fetches transactions for a given block hash.
+
+        Args:
+            block_hash (str): The hash of the block.
+            transaction_type (Optional[TransactionType]): Filter transactions by type.
+
+        Returns:
+            Dict[str, Any]: JSON response with transactions in the block.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         endpoint = f"rpc/v3/block/{block_hash}/transactions"
 
         params = {}
@@ -690,6 +885,19 @@ class RestClient:
     ########
 
     async def view_function(self, data: Union[Dict[str, Any], bytes]) -> Dict[str, Any]:
+        """
+        Executes a view function without creating a transaction on-chain.
+
+        Args:
+            data (Union[Dict[str, Any], bytes]): The request payload for the view function.
+
+        Returns:
+            Dict[str, Any]: JSON result of the view function.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         endpoint = "rpc/v3/view"
 
         resp = await self._post(endpoint=endpoint, data=data)
@@ -704,6 +912,20 @@ class RestClient:
     async def events_by_type(
         self, event_type: str, query: Optional[EventQuery] = None
     ) -> Dict[str, Any]:
+        """
+        Fetches events of a specific type.
+
+        Args:
+            event_type (str): Type of event to fetch.
+            query (Optional[EventQuery]): Optional query parameters for filtering/pagination.
+
+        Returns:
+            Dict[str, Any]: JSON response containing event data.
+
+        Raises:
+            ApiError: If the API request fails.
+        """
+
         endpoint = f"rpc/v3/events/{event_type}"
 
         params = query.to_params() if query is not None else {}
