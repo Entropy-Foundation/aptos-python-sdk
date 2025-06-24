@@ -17,8 +17,10 @@ from .api_types import (
     AccountCoinTxPaginationWithOrder,
     AccountPublishedListPagination,
     AccountTxPaginationWithOrder,
+    ConsensusBlockByHeightQuery,
     EventQuery,
     SupraRestAcceptType,
+    TableItemRequest,
     TransactionType,
 )
 from .authenticator import Authenticator, MultiAgentAuthenticator
@@ -424,6 +426,42 @@ class RestClient:
     ################
     # TRANSACTIONS #
     ################
+    async def estimate_gas_price(self) -> Dict[str, Any]:
+        """
+        Estimates the current gas price based on recent network conditions.
+
+        Returns:
+            Dict[str, Any]: JSON response with gas price estimation.
+
+        Raises:
+            ApiError: If the API request fails with a status code >= 400.
+        """
+
+        endpoint = "rpc/v2/transactions/estimate_gas_price"
+
+        resp = await self._get(endpoint=endpoint)
+        if resp.status >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(f"{resp.text}", resp.status)
+        return resp.json()
+
+    async def transaction_parameters(self) -> Dict[str, Any]:
+        """
+        Fetches the current network transaction configuration parameters.
+
+        Returns:
+            Dict[str, Any]: JSON response with transaction parameter settings.
+
+        Raises:
+            ApiError: If the API request fails with a status code >= 400.
+        """
+
+        endpoint = "rpc/v1/transactions/parameters"
+
+        resp = await self._get(endpoint=endpoint)
+        if resp.status >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(f"{resp.text}", resp.status)
+        return resp.json()
+
     async def transaction_by_hash(self, hash: str) -> Dict[str, Any]:
         """
         Fetches a transaction by its hash.
@@ -881,6 +919,99 @@ class RestClient:
             raise ApiError(f"{resp.text} - {block_hash}", resp.status)
         return resp.json()
 
+    async def latest_consensus_block(
+        self, with_batches: Optional[ConsensusBlockByHeightQuery] = None
+    ) -> Dict[str, Any]:
+        """
+        Fetches the latest consensus block from the chain.
+
+        Args:
+            with_batches (Optional[ConsensusBlockByHeightQuery]):
+                Optional query parameters to include batched transactions or metadata.
+
+        Returns:
+            Dict[str, Any]: JSON response containing the latest consensus block data.
+
+        Raises:
+            ApiError: If the API request fails with a status code >= 400.
+        """
+
+        endpoint = "rpc/v2/consensus/block"
+        params = with_batches.to_params() if with_batches is not None else {}
+
+        resp = await self._get(endpoint=endpoint, params=params)
+        if resp.status >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(f"{resp.text}", resp.status)
+        return resp.json()
+
+    async def consensus_block(
+        self, height: int, with_batches: Optional[ConsensusBlockByHeightQuery] = None
+    ) -> Dict[str, Any]:
+        """
+        Fetches a consensus block by its height with optional batched data.
+
+        Args:
+            height (int): The height of the consensus block to retrieve.
+            with_batched (Optional[ConsensusBlockByHeightQuery]):
+                Optional query parameters for including batched transactions or metadata.
+
+        Returns:
+            Dict[str, Any]: JSON response containing the consensus block data.
+
+        Raises:
+            ApiError: If the API request fails with a status code >= 400.
+        """
+
+        endpoint = f"rpc/v2/consensus/height/{height}"
+        params = with_batches.to_params() if with_batches is not None else {}
+
+        resp = await self._get(endpoint=endpoint, params=params)
+        if resp.status >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(f"{resp.text} - height: {height}", resp.status)
+        return resp.json()
+
+    async def committee_authorization(self, epoch: int) -> Dict[str, Any]:
+        endpoint = f"rpc/v1/consensus/committee_authorization/{epoch}"
+
+        resp = await self._get(endpoint=endpoint)
+        if resp.status >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(f"{resp.text} - epoch: {epoch}", resp.status)
+        return resp.json()
+
+    ##########
+    # TABLES #
+    ##########
+    async def table_items_by_key(
+        self,
+        table_handle: AccountAddress,
+        table_item_request: Optional[TableItemRequest] = None,
+    ) -> Dict[str, Any]:
+        """
+        Retrieve an item from a table by key.
+
+        Args:
+            table_handle (AccountAddress): Table handle to lookup. Should be retrieved using account resources API.
+            table_item_request (TableItemRequest): Request containing item key and value types and item key itself.
+
+        Returns:
+            Dict[str, Any]: Item of the table as MoveValueApi.
+        """
+
+        endpoint = f"rpc/v2/tables/{table_handle}/item"
+        content = (
+            table_item_request.to_params() if table_item_request is not None else {}
+        )
+
+        resp = await self._post(
+            endpoint=endpoint,
+            data=content,
+            headers={"content-type": "application/json"},
+        )
+
+        if resp.status >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(f"{resp.text} - table_handle: {table_handle}", resp.status)
+        return resp.json()
+
     ########
     # VIEW #
     ########
@@ -934,6 +1065,52 @@ class RestClient:
         resp = await self._get(endpoint=endpoint, params=params)
         if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {event_type} || {query}", resp.status)
+        return resp.json()
+
+    ##########
+    # WALLET #
+    ##########
+
+    async def faucet(self, address: AccountAddress) -> Dict[str, Any]:
+        """
+        Requests faucet funds to be sent to the given account address.
+
+        Args:
+            address (AccountAddress): The target account address to receive funds.
+
+        Returns:
+            Dict[str, Any]: JSON response containing the faucet transaction information.
+
+        Raises:
+            ApiError: If the API request fails with a non-200 status code.
+        """
+
+        endpoint = f"rpc/v1/wallet/faucet/{address}"
+
+        resp = await self._get(endpoint=endpoint)
+        if resp.status != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - account_address: {address}", resp.status)
+        return resp.json()
+
+    async def faucet_transaction_by_hash(self, hash: str) -> Dict[str, Any]:
+        """
+        Retrieves details of a faucet transaction by its hash.
+
+        Args:
+            hash (str): The hash of the faucet transaction.
+
+        Returns:
+            Dict[str, Any]: JSON response containing transaction details.
+
+        Raises:
+            ApiError: If the API request fails with a non-200 status code.
+        """
+
+        endpoint = f"rpc/v2/wallet/faucet/transactions/{hash}"
+
+        resp = await self._get(endpoint=endpoint)
+        if resp.status != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - hash: {hash}", resp.status)
         return resp.json()
 
     ###########

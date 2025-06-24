@@ -19,6 +19,49 @@ class TransactionType(str, Enum):
 
 
 @dataclass
+class ConsensusBlockByHeightQuery:
+    with_batches: bool = False
+
+    def to_params(self) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        params["with_batches"] = str(self.with_batches).lower()
+        return params
+
+
+@dataclass
+class TableItemRequest:
+    """
+    Represents a request for querying a specific item from a Move table.
+
+    Attributes:
+        key_type (Optional[str]): The type of the table key.
+        value_type (Optional[str]): The type of the table value.
+        key (Optional[str]): The key to fetch from the table.
+    """
+
+    key_type: Optional[str] = None
+    value_type: Optional[str] = None
+    key: Optional[str] = None
+
+    def to_params(self) -> Dict[str, Any]:
+        """
+        Converts the TableItemRequest into a dictionary of parameters for an HTTP request.
+
+        Returns:
+            Dict[str, Any]: Dictionary containing non-null fields as request parameters.
+        """
+
+        params: Dict[str, Any] = {}
+        if self.key_type:
+            params["key_type"] = self.key_type
+        if self.value_type:
+            params["value_type"] = self.value_type
+        if self.key:
+            params["key"] = self.key
+        return params
+
+
+@dataclass
 class AccountCoinTxPaginationWithOrder:
     """
     Represents pagination options for coin transactions in an account, including ordering.
