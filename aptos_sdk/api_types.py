@@ -20,20 +20,26 @@ class TransactionType(str, Enum):
 
 @dataclass
 class AccountCoinTxPaginationWithOrder:
-    # Maximum number of items to return. Default is 20.
+    """
+    Represents pagination options for coin transactions in an account, including ordering.
+
+    Attributes:
+        count (Optional[int]): Maximum number of items to return. Default is 20.
+        start (Optional[int]): The cursor (exclusive) that the search should start from.
+        ascending (bool): Flag indicating order of lookup. Defaults to False (descending).
+    """
+
     count: Optional[int] = None
-
-    # The cursor (exclusive) that the search should start from.
-    # If provided, returns `:count` of transactions starting from this cursor in the specified order.
-    # For order see `:ascending` flag.
     start: Optional[int] = None
-
-    # Flag indicating order of lookup.
-    # Defaults to `false` i.e. transactions are returned in descending order of their execution.
-    # If `true`, transactions are returned in ascending order of their execution.
     ascending: bool = False
 
     def to_params(self) -> Dict[str, Any]:
+        """
+        Converts the pagination configuration to a dictionary of query parameters.
+
+        Returns:
+            Dict[str, Any]: Dictionary of parameters for HTTP request.
+        """
         params: Dict[str, Any] = {}
         if self.count is not None:
             params["count"] = self.count
@@ -45,14 +51,24 @@ class AccountCoinTxPaginationWithOrder:
 
 @dataclass
 class AccountPublishedListPagination:
-    # Maximum number of items to return. Default is 20.
-    count: Optional[int] = None
+    """
+    Pagination options for listing published items associated with an account.
 
-    # Cursor specifying where to start for pagination.
-    # Use the cursor returned by the API when making the next request.
+    Attributes:
+        count (Optional[int]): Maximum number of items to return. Default is 20.
+        start (Optional[List[int]]): Cursor specifying where to start for pagination.
+    """
+
+    count: Optional[int] = None
     start: Optional[List[int]] = None
 
     def to_params(self) -> Dict[str, Any]:
+        """
+        Converts the pagination configuration to a dictionary of query parameters.
+
+        Returns:
+            Dict[str, Any]: Dictionary of parameters for HTTP request.
+        """
         params: Dict[str, Any] = {}
         if self.count is not None:
             params["count"] = self.count
@@ -63,29 +79,28 @@ class AccountPublishedListPagination:
 
 @dataclass
 class AccountAutomatedTxPagination:
-    # Maximum number of items to return. Default is 20.
+    """
+    Pagination options for automated transactions, supporting both block height and cursor.
+
+    Attributes:
+        count (Optional[int]): Maximum number of items to return. Default is 20.
+        block_height (Optional[int]): Starting block height (inclusive).
+        cursor (Optional[str]): The cursor (exclusive) to start the query from.
+        ascending (bool): Flag indicating order of lookup. Defaults to False (descending).
+    """
+
     count: Optional[int] = None
-
-    # Starting block height (inclusive). Optional.
-    # The block height at which to start lookup for transactions.
-    # If provided, returns `:count` of transactions starting from it in the specified order.
-    # For order see `:ascending` flag.
-    # Note: If a `:cursor` is specified then this field will be ignored.
     block_height: Optional[int] = None
-
-    # The cursor (exclusive) to start the query from. Optional.
-    # If provided, returns `:count` of transactions starting from this cursor in the specified order.
-    # For order see `:ascending` flag.
-    # If not specified, the lookup will be done based on the `:block_height` parameter value.
-    # Note: If both `:cursor` and `:block_height` are specified then `:cursor` has precedence.
     cursor: Optional[str] = None
-
-    # Flag indicating order of lookup
-    # Defaults to `false`; i.e. transactions are returned in descending order of their execution.
-    # If `true`, transactions are returned in ascending order of their execution.
     ascending: bool = False
 
     def to_params(self) -> Dict[str, Any]:
+        """
+        Converts the pagination configuration to a dictionary of query parameters.
+
+        Returns:
+            Dict[str, Any]: Dictionary of parameters for HTTP request.
+        """
         params: Dict[str, Any] = {}
         if self.count is not None:
             params["count"] = self.count
@@ -115,6 +130,12 @@ class AccountTxPaginationWithOrder:
     ascending: bool = False
 
     def to_params(self) -> Dict[str, Any]:
+        """
+        Converts the pagination configuration to a dictionary of query parameters.
+
+        Returns:
+            Dict[str, Any]: Dictionary of parameters for HTTP request.
+        """
         params: Dict[str, Any] = {}
         if self.count is not None:
             params["count"] = self.count
@@ -125,21 +146,28 @@ class AccountTxPaginationWithOrder:
 
 
 class EventQuery:
-    # Starting block height (inclusive). Optional.
+    """
+    Defines query parameters for fetching events over a block range.
+
+    Attributes:
+        start_height (Optional[int]): Starting block height (inclusive).
+        end_height (Optional[int]): Ending block height (exclusive).
+        limit (Optional[int]): Maximum number of events to return.
+        start (Optional[str]): Cursor to start the query from.
+    """
+
     start_height: Optional[int]
-
-    # Ending block height (exclusive). Optional.
     end_height: Optional[int]
-
-    # Maximum number of events to return. Defaults to 20, max 100.
     limit: Optional[int]
-
-    # The cursor to start the query from. Optional.
-    # During a paginated query, the cursor returned in the `X_SUPRA_CURSOR` response header
-    # should be specified as the `start` parameter of the request for the next page.
     start: Optional[str] = None
 
     def to_params(self) -> Dict[str, Any]:
+        """
+        Converts the event query configuration to a dictionary of query parameters.
+
+        Returns:
+            Dict[str, Any]: Dictionary of parameters for HTTP request.
+        """
         params: Dict[str, Any] = {}
         if self.start_height is not None:
             params["start_height"] = self.start_height

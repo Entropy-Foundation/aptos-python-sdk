@@ -8,8 +8,7 @@ import httpx
 import python_graphql_client
 
 from .account_address import AccountAddress
-from .metadata import Metadata
-from .types import (
+from .api_types import (
     AccountAutomatedTxPagination,
     AccountCoinTxPaginationWithOrder,
     AccountPublishedListPagination,
@@ -18,6 +17,7 @@ from .types import (
     SupraRestAcceptType,
     TransactionType,
 )
+from .metadata import Metadata
 
 U64_MAX = 18446744073709551615
 
