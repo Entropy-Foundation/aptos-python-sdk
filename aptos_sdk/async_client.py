@@ -24,7 +24,17 @@ U64_MAX = 18446744073709551615
 
 @dataclass
 class ClientConfig:
-    """Common configuration for clients, particularly for submitting transactions"""
+    """
+    Holds configuration options for REST API clients.
+
+    Attributes:
+        expiration_ttl (int): Time-to-live in seconds before a transaction expires.
+        gas_unit_price (int): Price per unit of gas.
+        max_gas_amount (int): Maximum gas units allowed for transactions.
+        transaction_wait_in_seconds (int): Time to wait for transaction confirmation.
+        http2 (bool): Whether to use HTTP/2 for requests.
+        api_key (Optional[str]): Optional API key for authentication.
+    """
 
     expiration_ttl: int = 600
     gas_unit_price: int = 100
@@ -40,6 +50,14 @@ class IndexerClient:
     client: python_graphql_client.GraphqlClient
 
     def __init__(self, indexer_url: str, bearer_token: Optional[str] = None):
+        """
+        Initializes the IndexerClient.
+
+        Args:
+            indexer_url (str): GraphQL endpoint URL.
+            bearer_token (Optional[str]): Optional token for Authorization header.
+        """
+
         headers = {}
         if bearer_token:
             headers["Authorization"] = f"Bearer {bearer_token}"
@@ -48,6 +66,17 @@ class IndexerClient:
         )
 
     async def query(self, query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute a GraphQL query asynchronously.
+
+        Args:
+            query (str): The GraphQL query string.
+            variables (Dict[str, Any]): Dictionary of query variables.
+
+        Returns:
+            Dict[str, Any]: The query response data.
+        """
+
         return await self.client.execute_async(query, variables)
 
 
@@ -60,6 +89,14 @@ class RestClient:
     base_url: str
 
     def __init__(self, base_url: str, client_config: ClientConfig = ClientConfig()):
+        """
+        Initializes the REST client.
+
+        Args:
+            base_url (str): The base URL of the API.
+            client_config (ClientConfig): Configuration options for requests.
+        """
+
         self.base_url = base_url
         # Default limits
         limits = httpx.Limits()
@@ -80,9 +117,20 @@ class RestClient:
             self.client.headers["Authorization"] = f"Bearer {client_config.api_key}"
 
     async def close(self):
+        """
+        Closes the HTTP client session.
+        """
+
         await self.client.aclose()
 
     async def chain_id(self):
+        """
+        Fetches and caches the chain ID.
+
+        Returns:
+            int: The chain ID.
+        """
+
         if not self._chain_id:
             info = await self.info()
             self._chain_id = int(info["chain_id"])
@@ -92,12 +140,22 @@ class RestClient:
     # ACCOUNT #
     ###########
 
-    async def get_account_v3(
+    async def get_account(
         self,
         account_address: AccountAddress,
         accept_type: str = SupraRestAcceptType.JSON.value,
     ) -> Dict[str, str]:
-        """GET /rpc/v3/accounts/{address}"""
+        """
+        Fetches basic account information.
+
+        Args:
+            account_address (AccountAddress): Address of the account.
+            accept_type (str): MIME type to accept in response.
+
+        Returns:
+            Dict[str, str]: The account metadata.
+        """
+
         endpoint = f"rpc/v3/accounts/{account_address}"
         headers = {"Accept": accept_type}
 
@@ -107,7 +165,7 @@ class RestClient:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_transaction_v3(
+    async def get_account_transaction(
         self,
         account_address: AccountAddress,
         pagination_with_order: Optional[AccountTxPaginationWithOrder] = None,
@@ -365,7 +423,19 @@ class RestClient:
         headers: Optional[Dict[str, Any]] = None,
         data: Optional[Union[Dict[str, Any], bytes]] = None,
     ) -> httpx.Response:
-        # format params:
+        """
+        Performs an asynchronous POST request.
+
+        Args:
+            endpoint (str): API endpoint.
+            params (Optional[Dict[str, Any]]): Query parameters.
+            headers (Optional[Dict[str, Any]]): Request headers.
+            data (Optional[Union[Dict[str, Any], bytes]]): POST body data.
+
+        Returns:
+            httpx.Response: The response from the server.
+        """
+
         params = {} if params is None else params
         params = {key: val for key, val in params.items() if val is not None}
 
@@ -393,7 +463,18 @@ class RestClient:
         headers: Optional[Dict[str, str]] = None,
         params: Optional[Dict[str, Any]] = None,
     ) -> httpx.Response:
-        # format params:
+        """
+        Performs an asynchronous GET request.
+
+        Args:
+            endpoint (str): Endpoint to call.
+            headers (Optional[Dict[str, str]]): Optional headers.
+            params (Optional[Dict[str, Any]]): Optional query parameters.
+
+        Returns:
+            httpx.Response: The response from the server.
+        """
+
         params = {} if params is None else params
         params = {key: val for key, val in params.items() if val is not None}
         return await self.client.get(
@@ -401,7 +482,17 @@ class RestClient:
         )
 
     def _check_accept_type(self, accept_type: str, unsupported: List[str]) -> None:
-        """Check if accept type is supported (mirrors reject_unsupported_header)"""
+        """
+        Checks if the given Accept type is supported.
+
+        Args:
+            accept_type (str): The content-type requested.
+            unsupported (List[str]): List of unsupported types.
+
+        Raises:
+            AcceptTypeNotSupported: If `accept_type` is not supported.
+        """
+
         if accept_type in unsupported:
             supported = [
                 t
@@ -421,6 +512,15 @@ class FaucetClient:
     def __init__(
         self, base_url: str, rest_client: RestClient, auth_token: Optional[str] = None
     ):
+        """
+        Initializes the FaucetClient.
+
+        Args:
+            base_url (str): Faucet service URL.
+            rest_client (RestClient): Instance of RestClient to use.
+            auth_token (Optional[str]): Optional bearer token for authorization.
+        """
+
         self.base_url = base_url
         self.rest_client = rest_client
         self.headers = {}
@@ -433,8 +533,18 @@ class FaucetClient:
     async def fund_account(
         self, address: AccountAddress, amount: int, wait_for_transaction=True
     ):
-        """This creates an account if it does not exist and mints the specified amount of
-        coins into that account."""
+        """
+        Funds an account by minting coins. Creates the account if it doesn't exist.
+
+        Args:
+            address (AccountAddress): The address to fund.
+            amount (int): Amount of coins to mint.
+            wait_for_transaction (bool): Whether to wait for the transaction to be confirmed.
+
+        Returns:
+            str: The transaction hash.
+        """
+
         request = f"{self.base_url}/mint?amount={amount}&address={address}"
         response = await self.rest_client.client.post(request, headers=self.headers)
         if response.status_code >= 400:
@@ -445,12 +555,24 @@ class FaucetClient:
         return txn_hash
 
     async def healthy(self) -> bool:
+        """
+        Checks if the Faucet service is healthy.
+
+        Returns:
+            bool: True if healthy, False otherwise.
+        """
+
         response = await self.rest_client.client.get(self.base_url)
         return "tap:ok" == response.text
 
 
 class ApiError(Exception):
-    """The API returned a non-success status code, e.g., >= 400"""
+    """
+    Exception raised when the API returns a non-2xx response.
+
+    Attributes:
+        status_code (int): The HTTP status code returned.
+    """
 
     status_code: int
 
@@ -461,7 +583,13 @@ class ApiError(Exception):
 
 
 class AcceptTypeNotSupported(Exception):
-    """Exception raised when an Accept type is not supported."""
+    """
+    Exception raised when an Accept header contains an unsupported MIME type.
+
+    Attributes:
+        accept_type (str): The unsupported type.
+        supported_types (List[str]): List of supported types.
+    """
 
     def __init__(self, accept_type: str, supported_types: list[str]):
         self.accept_type = accept_type
@@ -475,7 +603,12 @@ class AcceptTypeNotSupported(Exception):
 
 
 class AccountNotFound(Exception):
-    """The account was not found"""
+    """
+    Exception raised when a requested account cannot be found.
+
+    Attributes:
+        account (AccountAddress): The account that was not found.
+    """
 
     account: AccountAddress
 
@@ -486,7 +619,12 @@ class AccountNotFound(Exception):
 
 
 class ResourceNotFound(Exception):
-    """The underlying resource was not found"""
+    """
+    Exception raised when a requested resource cannot be found.
+
+    Attributes:
+        resource (str): The resource name or identifier.
+    """
 
     resource: str
 
