@@ -1,12 +1,15 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import httpx
 import python_graphql_client
 
+from .account import Account
 from .account_address import AccountAddress
 from .api_types import (
     AccountAutomatedTxPagination,
@@ -17,7 +20,18 @@ from .api_types import (
     SupraRestAcceptType,
     TransactionType,
 )
+from .authenticator import Authenticator, MultiAgentAuthenticator
+from .bcs import Serializer
 from .metadata import Metadata
+from .transactions import (
+    EntryFunction,
+    MultiAgentRawTransaction,
+    RawTransaction,
+    SignedTransaction,
+    TransactionArgument,
+    TransactionPayload,
+)
+from .type_tag import StructTag, TypeTag
 
 U64_MAX = 18446744073709551615
 
@@ -143,25 +157,25 @@ class RestClient:
     async def get_account(
         self,
         account_address: AccountAddress,
-        accept_type: str = SupraRestAcceptType.JSON.value,
+        accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, str]:
         """
         Fetches basic account information.
 
         Args:
             account_address (AccountAddress): Address of the account.
-            accept_type (str): MIME type to accept in response.
+            accept_type (SupraRestAcceptType): MIME type to accept in response.
 
         Returns:
             Dict[str, str]: The account metadata.
         """
 
         endpoint = f"rpc/v3/accounts/{account_address}"
-        headers = {"Accept": accept_type}
+        headers = {"Accept": accept_type.value}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
 
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
@@ -169,38 +183,38 @@ class RestClient:
         self,
         account_address: AccountAddress,
         pagination_with_order: Optional[AccountTxPaginationWithOrder] = None,
-        accept_type: str = SupraRestAcceptType.JSON.value,
+        accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
         self._check_accept_type(
-            accept_type,
+            accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
 
         endpoint = f"rpc/v3/accounts/{account_address}/transactions"
-        headers = {"Accept": accept_type}
+        headers = {"Accept": accept_type.value}
         params = pagination_with_order.to_params() if pagination_with_order else {}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_automated_transactions_v3(
+    async def get_account_automated_transactions(
         self,
         address: AccountAddress,
         pagination: Optional[AccountAutomatedTxPagination] = None,
-        accept_type: str = SupraRestAcceptType.JSON.value,
+        accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
         # TODO: Add return type
     ):
         """GET /rpc/v3/accounts/{address}/automated_transactions"""
         self._check_accept_type(
-            accept_type,
+            accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
 
         endpoint = f"rpc/v3/accounts/{address}/automated_transactions"
-        headers = {"Accept": accept_type}
+        headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
@@ -211,94 +225,94 @@ class RestClient:
 
         return data, resp_cursor
 
-    async def coin_transaction_v3(
+    async def coin_transaction(
         self,
         account_address: AccountAddress,
         pagination: Optional[AccountCoinTxPaginationWithOrder] = None,
         # txn_type: None,
-        accept_type: str = SupraRestAcceptType.JSON.value,
+        accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
         self._check_accept_type(
-            accept_type,
+            accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
         endpoint = f"rpc/v3/accounts/{account_address}/coin_transactions"
-        headers = {"Accept": accept_type}
+        headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_resources_v3(
+    async def get_account_resources(
         self,
         account_address: AccountAddress,
         pagination: Optional[AccountPublishedListPagination] = None,
-        accept_type: str = SupraRestAcceptType.JSON.value,
+        accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
         self._check_accept_type(
-            accept_type,
+            accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
         endpoint = f"rpc/v3/accounts/{account_address}/resources"
-        headers = {"Accept": accept_type}
+        headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_modules_v3(
+    async def get_account_modules(
         self,
         account_address: AccountAddress,
         pagination: Optional[AccountPublishedListPagination] = None,
-        accept_type: str = SupraRestAcceptType.JSON.value,
+        accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
         self._check_accept_type(
-            accept_type,
+            accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
         endpoint = f"rpc/v3/accounts/{account_address}/modules"
-        headers = {"Accept": accept_type}
+        headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
-    async def get_account_specific_resource_v3(
+    async def get_account_specific_resource(
         self,
         path_param: Tuple[AccountAddress, str],
-        accept_type: str = SupraRestAcceptType.JSON.value,
+        accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
-        self._check_accept_type(accept_type, [SupraRestAcceptType.OCTET.value])
+        self._check_accept_type(accept_type.value, [SupraRestAcceptType.OCTET.value])
         address, tag_string = path_param[0], path_param[1]
         endpoint = f"rpc/v3/accounts/{address}/resources/{tag_string}"
-        headers = {"Accept": accept_type}
+        headers = {"Accept": accept_type.value}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {address}", resp.status)
         return resp.json()
 
-    async def get_account_specific_modules_v3(
+    async def get_account_specific_modules(
         self,
         path_param: Tuple[AccountAddress, str],
-        accept_type: str = SupraRestAcceptType.JSON.value,
+        accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> Dict[str, Any]:
-        self._check_accept_type(accept_type, [SupraRestAcceptType.OCTET.value])
+        self._check_accept_type(accept_type.value, [SupraRestAcceptType.OCTET.value])
         address, module_name = path_param[0], path_param[1]
         endpoint = f"rpc/v3/accounts/{address}/modules/{module_name}"
-        headers = {"Accept": accept_type}
+        headers = {"Accept": accept_type.value}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {address}", resp.status)
         return resp.json()
 
@@ -309,7 +323,7 @@ class RestClient:
         endpoint = f"rpc/v3/transactions/{hash}"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {hash}", resp.status)
         return resp.json()
 
@@ -319,7 +333,7 @@ class RestClient:
         endpoint = "rpc/v3/transactions/submit"
 
         resp = await self._post(endpoint=endpoint, data=transaction_data)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {transaction_data}", resp.status)
         return resp.json()
 
@@ -329,9 +343,296 @@ class RestClient:
         endpoint = "rpc/v3/transactions/simulate"
 
         resp = await self._post(endpoint=endpoint, data=transaction_data)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {transaction_data}", resp.status)
         return resp.json()
+
+    async def simulate_bcs_transaction(
+        self,
+        signed_transaction: SignedTransaction,
+        estimate_gas_usage: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        NOT PRESENT IN SUPRA
+        """
+        headers = {"Content-Type": "application/x.aptos.signed_transaction+bcs"}
+        params = {}
+        if estimate_gas_usage:
+            params = {
+                "estimate_gas_unit_price": "true",
+                "estimate_max_gas_amount": "true",
+            }
+
+        response = await self.client.post(
+            f"{self.base_url}/transactions/simulate",
+            params=params,
+            headers=headers,
+            content=signed_transaction.bytes(),
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+
+        return response.json()
+
+    async def submit_bcs_transaction(
+        self, signed_transaction: SignedTransaction
+    ) -> str:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        headers = {"Content-Type": "application/x.aptos.signed_transaction+bcs"}
+        response = await self.client.post(
+            f"{self.base_url}/transactions",
+            headers=headers,
+            content=signed_transaction.bytes(),
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        return response.json()["hash"]
+
+    async def submit_and_wait_for_bcs_transaction(
+        self, signed_transaction: SignedTransaction
+    ) -> Dict[str, Any]:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        txn_hash = await self.submit_bcs_transaction(signed_transaction)
+        await self.wait_for_transaction(txn_hash)
+        return await self.transaction_by_hash(txn_hash)
+
+    async def transaction_pending(self, txn_hash: str) -> bool:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
+        # TODO(@davidiw): consider raising a different error here, since this is an ambiguous state
+        if response.status_code == 404:
+            return True
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        return response.json()["type"] == "pending_transaction"
+
+    async def wait_for_transaction(self, txn_hash: str) -> None:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        """
+        Waits up to the duration specified in client_config for a transaction to move past pending
+        state.
+        """
+
+        count = 0
+        while await self.transaction_pending(txn_hash):
+            assert count < self.client_config.transaction_wait_in_seconds, (
+                f"transaction {txn_hash} timed out"
+            )
+            await asyncio.sleep(1)
+            count += 1
+
+        response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
+        assert "success" in response.json() and response.json()["success"], (
+            f"{response.text} - {txn_hash}"
+        )
+
+    async def account_transaction_sequence_number_status(
+        self, address: AccountAddress, sequence_number: int
+    ) -> bool:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        """Retrieve the state of a transaction by account and sequence number."""
+        response = await self._get(
+            endpoint=f"accounts/{address}/transactions",
+            params={
+                "limit": 1,
+                "start": sequence_number,
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        data = response.json()
+        return len(data) == 1 and data[0]["type"] != "pending_transaction"
+
+    ########################
+    # TRANSACTIONS HELPERS #
+    ########################
+
+    async def create_multi_agent_bcs_transaction(
+        self,
+        sender: Account,
+        secondary_accounts: List[Account],
+        payload: TransactionPayload,
+    ) -> SignedTransaction:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        raw_transaction = MultiAgentRawTransaction(
+            RawTransaction(
+                sender.address(),
+                await self.account_sequence_number(sender.address()),
+                payload,
+                self.client_config.max_gas_amount,
+                self.client_config.gas_unit_price,
+                int(time.time()) + self.client_config.expiration_ttl,
+                await self.chain_id(),
+            ),
+            [x.address() for x in secondary_accounts],
+        )
+
+        authenticator = Authenticator(
+            MultiAgentAuthenticator(
+                sender.sign_transaction(raw_transaction),
+                [
+                    (
+                        x.address(),
+                        x.sign_transaction(raw_transaction),
+                    )
+                    for x in secondary_accounts
+                ],
+            )
+        )
+
+        return SignedTransaction(raw_transaction.inner(), authenticator)
+
+    async def create_bcs_transaction(
+        self,
+        sender: Account | AccountAddress,
+        payload: TransactionPayload,
+        sequence_number: Optional[int] = None,
+    ) -> RawTransaction:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        if isinstance(sender, Account):
+            sender_address = sender.address()
+        else:
+            sender_address = sender
+
+        sequence_number = (
+            sequence_number
+            if sequence_number is not None
+            else await self.account_sequence_number(sender_address)
+        )
+        return RawTransaction(
+            sender_address,
+            sequence_number,
+            payload,
+            self.client_config.max_gas_amount,
+            self.client_config.gas_unit_price,
+            int(time.time()) + self.client_config.expiration_ttl,
+            await self.chain_id(),
+        )
+
+    async def create_bcs_signed_transaction(
+        self,
+        sender: Account,
+        payload: TransactionPayload,
+        sequence_number: Optional[int] = None,
+    ) -> SignedTransaction:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        raw_transaction = await self.create_bcs_transaction(
+            sender, payload, sequence_number
+        )
+        authenticator = sender.sign_transaction(raw_transaction)
+        return SignedTransaction(raw_transaction, authenticator)
+
+    #########################
+    # TRANSACTIONS WRAPPERS #
+    #########################
+
+    # :!:>bcs_transfer
+    async def bcs_transfer(
+        self,
+        sender: Account,
+        recipient: AccountAddress,
+        amount: int,
+        sequence_number: Optional[int] = None,
+    ) -> str:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        transaction_arguments = [
+            TransactionArgument(recipient, Serializer.struct),
+            TransactionArgument(amount, Serializer.u64),
+        ]
+
+        payload = EntryFunction.natural(
+            "0x1::aptos_account",
+            "transfer",
+            [],
+            transaction_arguments,
+        )
+
+        signed_transaction = await self.create_bcs_signed_transaction(
+            sender, TransactionPayload(payload), sequence_number=sequence_number
+        )
+        # <:!:bcs_transfer
+        return await self.submit_bcs_transaction(signed_transaction)
+
+    async def transfer_coins(
+        self,
+        sender: Account,
+        recipient: AccountAddress,
+        coin_type: str,
+        amount: int,
+        sequence_number: Optional[int] = None,
+    ) -> str:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        transaction_arguments = [
+            TransactionArgument(recipient, Serializer.struct),
+            TransactionArgument(amount, Serializer.u64),
+        ]
+
+        payload = EntryFunction.natural(
+            "0x1::aptos_account",
+            "transfer_coins",
+            [TypeTag(StructTag.from_str(coin_type))],
+            transaction_arguments,
+        )
+
+        signed_transaction = await self.create_bcs_signed_transaction(
+            sender, TransactionPayload(payload), sequence_number=sequence_number
+        )
+        return await self.submit_bcs_transaction(signed_transaction)
+
+    async def transfer_object(
+        self, owner: Account, object: AccountAddress, to: AccountAddress
+    ) -> str:
+        """
+        NOT PRESENT IN SUPRA
+        """
+
+        transaction_arguments = [
+            TransactionArgument(object, Serializer.struct),
+            TransactionArgument(to, Serializer.struct),
+        ]
+
+        payload = EntryFunction.natural(
+            "0x1::object",
+            "transfer_call",
+            [],
+            transaction_arguments,
+        )
+
+        signed_transaction = await self.create_bcs_signed_transaction(
+            owner,
+            TransactionPayload(payload),
+        )
+        return await self.submit_bcs_transaction(signed_transaction)
 
     ##########
     # BLOCKS #
@@ -340,7 +641,7 @@ class RestClient:
         endpoint = "rpc/v3/block"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - NIL", resp.status)
         return resp.json()
 
@@ -348,7 +649,7 @@ class RestClient:
         endpoint = f"rpc/v3/block/{block_hash}"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {block_hash}", resp.status)
         return resp.json()
 
@@ -366,7 +667,7 @@ class RestClient:
             params["transaction_type"] = transaction_type.value
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {height}", resp.status)
         return resp.json()
 
@@ -380,7 +681,7 @@ class RestClient:
             params["transaction_type"] = transaction_type.value
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {block_hash}", resp.status)
         return resp.json()
 
@@ -392,7 +693,7 @@ class RestClient:
         endpoint = "rpc/v3/view"
 
         resp = await self._post(endpoint=endpoint, data=data)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {data}", resp.status)
         return resp.json()
 
@@ -408,7 +709,7 @@ class RestClient:
         params = query.to_params() if query is not None else {}
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status >= 400:
+        if resp.status != 200:
             raise ApiError(f"{resp.text} - {event_type} || {query}", resp.status)
         return resp.json()
 
