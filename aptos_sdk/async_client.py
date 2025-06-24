@@ -4,6 +4,7 @@
 import asyncio
 import time
 from dataclasses import dataclass
+from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import httpx
@@ -175,7 +176,7 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
 
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
@@ -211,7 +212,7 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
@@ -288,7 +289,7 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
@@ -323,7 +324,7 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
@@ -358,7 +359,7 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {account_address}", resp.status)
         return resp.json()
 
@@ -387,7 +388,7 @@ class RestClient:
         headers = {"Accept": accept_type.value}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {address}", resp.status)
         return resp.json()
 
@@ -416,7 +417,7 @@ class RestClient:
         headers = {"Accept": accept_type.value}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {address}", resp.status)
         return resp.json()
 
@@ -440,7 +441,7 @@ class RestClient:
         endpoint = f"rpc/v3/transactions/{hash}"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {hash}", resp.status)
         return resp.json()
 
@@ -463,7 +464,7 @@ class RestClient:
         endpoint = "rpc/v3/transactions/submit"
 
         resp = await self._post(endpoint=endpoint, data=transaction_data)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {transaction_data}", resp.status)
         return resp.json()
 
@@ -486,7 +487,7 @@ class RestClient:
         endpoint = "rpc/v3/transactions/simulate"
 
         resp = await self._post(endpoint=endpoint, data=transaction_data)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {transaction_data}", resp.status)
         return resp.json()
 
@@ -512,7 +513,7 @@ class RestClient:
             headers=headers,
             content=signed_transaction.bytes(),
         )
-        if response.status_code >= 400:
+        if response.status_code >= HTTPStatus.BAD_REQUEST:
             raise ApiError(response.text, response.status_code)
 
         return response.json()
@@ -530,7 +531,7 @@ class RestClient:
             headers=headers,
             content=signed_transaction.bytes(),
         )
-        if response.status_code >= 400:
+        if response.status_code >= HTTPStatus.BAD_REQUEST:
             raise ApiError(response.text, response.status_code)
         return response.json()["hash"]
 
@@ -552,9 +553,9 @@ class RestClient:
 
         response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
         # TODO(@davidiw): consider raising a different error here, since this is an ambiguous state
-        if response.status_code == 404:
+        if response.status_code == HTTPStatus.NOT_FOUND:
             return True
-        if response.status_code >= 400:
+        if response.status_code >= HTTPStatus.BAD_REQUEST:
             raise ApiError(response.text, response.status_code)
         return response.json()["type"] == "pending_transaction"
 
@@ -596,7 +597,7 @@ class RestClient:
                 "start": sequence_number,
             },
         )
-        if response.status_code >= 400:
+        if response.status_code >= HTTPStatus.BAD_REQUEST:
             raise ApiError(response.text, response.status_code)
         data = response.json()
         return len(data) == 1 and data[0]["type"] != "pending_transaction"
@@ -794,7 +795,7 @@ class RestClient:
         endpoint = "rpc/v3/block"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - NIL", resp.status)
         return resp.json()
 
@@ -815,7 +816,7 @@ class RestClient:
         endpoint = f"rpc/v3/block/{block_hash}"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {block_hash}", resp.status)
         return resp.json()
 
@@ -848,7 +849,7 @@ class RestClient:
             params["transaction_type"] = transaction_type.value
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {height}", resp.status)
         return resp.json()
 
@@ -876,7 +877,7 @@ class RestClient:
             params["transaction_type"] = transaction_type.value
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {block_hash}", resp.status)
         return resp.json()
 
@@ -901,7 +902,7 @@ class RestClient:
         endpoint = "rpc/v3/view"
 
         resp = await self._post(endpoint=endpoint, data=data)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {data}", resp.status)
         return resp.json()
 
@@ -931,7 +932,7 @@ class RestClient:
         params = query.to_params() if query is not None else {}
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status != 200:
+        if resp.status != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {event_type} || {query}", resp.status)
         return resp.json()
 
@@ -1070,7 +1071,7 @@ class FaucetClient:
 
         request = f"{self.base_url}/mint?amount={amount}&address={address}"
         response = await self.rest_client.client.post(request, headers=self.headers)
-        if response.status_code >= 400:
+        if response.status_code >= HTTPStatus.BAD_REQUEST:
             raise ApiError(response.text, response.status_code)
         txn_hash = response.json()[0]
         if wait_for_transaction:
