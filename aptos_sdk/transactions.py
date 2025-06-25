@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import unittest
+from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional, Union, cast
 
 from typing_extensions import Protocol
@@ -613,6 +614,93 @@ class SignedTransaction:
     def serialize(self, serializer: Serializer) -> None:
         self.transaction.serialize(serializer)
         self.authenticator.serialize(serializer)
+
+
+@dataclass
+class AutomatedTransaction:
+    raw_txn: RawTransaction
+    authenticator: Authenticator
+    block_height: int
+    _raw_txn_size: Optional[int] = field(default=None, init=False, repr=False)
+    _hash: Optional[bytes] = field(default=None, init=False, repr=False)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, AutomatedTransaction):
+            return False
+        else:
+            return (
+                self.raw_txn == other.raw_txn
+                and self.authenticator == other.authenticator
+                and self.block_height == other.block_height
+            )
+
+    def __str__(self) -> str:
+        return f"""
+            AutomatedTransaction:
+            raw_txn: {self.raw_txn}
+            authenticator: {self.authenticator.__str__()}
+        """
+
+    def sender(self) -> AccountAddress:
+        return self.raw_txn.sender
+
+    def sequence_number(self) -> int:
+        return self.raw_txn.sequence_number
+
+    def chain_id(self) -> int:
+        return self.raw_txn.chain_id
+
+    def payload(self) -> TransactionPayload:
+        return self.raw_txn.payload
+
+    def max_gas_amount(self) -> int:
+        return self.raw_txn.max_gas_amount
+
+    def gas_unit_price(self) -> int:
+        return self.raw_txn.gas_unit_price
+
+    def expiration_timestamps_secs(self) -> int:
+        return self.raw_txn.expiration_timestamps_secs
+
+    def duration_since(self, base_timestamp: int) -> Optional[int]:
+        expiration = self.expiration_timestamps_secs()
+        if expiration > base_timestamp:
+            return expiration - base_timestamp
+        return None
+
+    @property
+    def raw_txn_bytes_len(self) -> int:
+        if self._raw_txn_size is None:
+            serializer = Serializer()
+            self.raw_txn.serialize(serializer)
+            self._raw_txn_size = len(serializer.output())
+        return self._raw_txn_size
+
+    def txn_bytes_len(self):
+        serializer = Serializer()
+        self.authenticator.serialize(Serializer)
+        auth_size = len(serializer.output)
+        return self.raw_txn_bytes_len() + auth_size
+
+    @property
+    def hash(self) -> bytes:
+        if self._hash is None:
+            serializer = Serializer()
+            self.serialize(serializer)
+            self._hash = hashlib.sha3_256(serializer.output()).digest()
+        return self._hash
+
+    def serialize(self, s: Serializer) -> None:
+        self.raw_txn.serialize(s)
+        self.authenticator.serialize(s)
+        s.u64(self.block_height)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "AutomatedTransaction":
+        raw_txn = RawTransaction.deserialize(deserializer)
+        authenticator = Authenticator.deserialize(deserializer)
+        block_height = deserializer.u64()
+        return AutomatedTransaction(raw_txn, authenticator, block_height)
 
 
 class Test(unittest.TestCase):
