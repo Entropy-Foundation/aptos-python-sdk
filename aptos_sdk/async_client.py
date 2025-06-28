@@ -766,8 +766,6 @@ class RestClient:
             ApiError: If the API request fails
         """
 
-        # Build the transaction arguments for automation registration
-        # This follows the RegistrationParams::new_v1 pattern from Rust
         transaction_arguments = [
             TransactionArgument(
                 task_payload, Serializer.struct
@@ -838,6 +836,54 @@ class RestClient:
             "cancel_task",  # Function name in the module
             [],  # No type arguments needed
             transaction_arguments,  # The task_index argument
+        )
+
+        signed_transaction = await self.create_bcs_signed_transaction(
+            sender, TransactionPayload(payload), sequence_number=sequence_number
+        )
+
+        if simulate:
+            return await self.simulate_bcs_transaction(signed_transaction, True)
+        else:
+            return await self.submit_bcs_transaction(signed_transaction)
+
+    async def stop_automation_tasks(
+        self,
+        sender: Account,
+        task_indexes: List[int],
+        simulate: bool = False,
+        sequence_number: Optional[int] = None,
+    ) -> Union[Dict[str, Any], str]:
+        """
+        Stop/Immediately cancel registered automation tasks by indexes.
+
+        This method mirrors the Rust implementation that calls automation_registry_stop_tasks.
+        Follows the same pattern as cancel_automation_task for consistency.
+
+        Args:
+            sender (Account): The account that will sign and send the transaction
+            task_indexes (List[int]): List of task IDs to stop immediately
+            simulate (bool): Whether to simulate the transaction instead of executing it
+            sequence_number (Optional[int]): Optional sequence number override
+
+        Returns:
+            str: Transaction hash if executed, or simulation result if simulated
+
+        Raises:
+            ApiError: If the API request fails
+        """
+
+        transaction_arguments = [
+            TransactionArgument(task_indexes, Serializer.sequence),
+        ]
+
+        # Create the payload for the automation registry stop_tasks function
+        # Based on: automation_registry_stop_tasks(task_indexes) from Rust
+        payload = EntryFunction.natural(
+            "0x1::automation_registry",  # Standard library automation registry module
+            "stop_tasks",  # Function name in the module
+            [],  # No type arguments needed
+            transaction_arguments,  # The task_indexes argument (vector<u64>)
         )
 
         signed_transaction = await self.create_bcs_signed_transaction(
