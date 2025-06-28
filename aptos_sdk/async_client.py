@@ -732,6 +732,74 @@ class RestClient:
     # TRANSACTIONS WRAPPERS #
     #########################
 
+    async def register_automation_task(
+        self,
+        sender: Account,
+        task_payload: EntryFunction,
+        task_max_gas_amount: int,
+        task_gas_price_cap: int,
+        task_expiry_time_secs: int,
+        task_automation_fee_cap: int,
+        simulate: bool = False,
+        sequence_number: Optional[int] = None,
+    ) -> Union[Dict[str, Any], str]:
+        """
+        Registers a new automation task with the automation registry.
+
+        This method mirrors the Rust implementation that creates AutomationRegistration
+        with RegistrationParams. Follows the same pattern as cancel_automation_task for consistency.
+
+        Args:
+            sender (Account): The account that will sign and send the transaction
+            task_payload (EntryFunction): The entry function to be executed automatically
+            task_max_gas_amount (int): Maximum gas amount to be paid when registered task is executed
+            task_gas_price_cap (int): Maximum gas price user is willing to pay for the task
+            task_expiry_time_secs (int): Task expire time in seconds since EPOCH
+            task_automation_fee_cap (int): The maximum automation fee per epoch user is willing to pay
+            simulate (bool): Whether to simulate the transaction instead of executing it
+            sequence_number (Optional[int]): Optional sequence number override
+
+        Returns:
+            str: Transaction hash if executed, or simulation result if simulated
+
+        Raises:
+            ApiError: If the API request fails
+        """
+
+        # Build the transaction arguments for automation registration
+        # This follows the RegistrationParams::new_v1 pattern from Rust
+        transaction_arguments = [
+            TransactionArgument(
+                task_payload, Serializer.struct
+            ),  # The task payload (EntryFunction)
+            TransactionArgument(task_expiry_time_secs, Serializer.u64),
+            TransactionArgument(task_max_gas_amount, Serializer.u64),
+            TransactionArgument(task_gas_price_cap, Serializer.u64),
+            TransactionArgument(task_automation_fee_cap, Serializer.u64),
+            TransactionArgument(
+                [], Serializer.sequence
+            ),  # auxiliary_data (empty vector)
+        ]
+
+        # Create the payload for the automation registry register function
+        # Based on: TransactionPayload::AutomationRegistration(registration_params) from Rust
+        payload = EntryFunction.natural(
+            "0x1::automation_registry",  # Standard library automation registry module
+            # Function name in the module (assuming this is the function name)
+            "register_task",
+            [],  # No type arguments needed
+            transaction_arguments,  # The registration parameters
+        )
+
+        signed_transaction = await self.create_bcs_signed_transaction(
+            sender, TransactionPayload(payload), sequence_number=sequence_number
+        )
+
+        if simulate:
+            return await self.simulate_bcs_transaction(signed_transaction, True)
+        else:
+            return await self.submit_bcs_transaction(signed_transaction)
+
     async def cancel_automation_task(
         self,
         sender: Account,
