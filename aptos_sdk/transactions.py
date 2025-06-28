@@ -25,6 +25,7 @@ from .authenticator import (
     SingleKeyAuthenticator,
     SingleSenderAuthenticator,
 )
+from .auto_txn_types import SupraTransactionOptions
 from .bcs import Deserializable, Deserializer, Serializable, Serializer
 from .type_tag import StructTag, TypeTag
 
@@ -701,6 +702,32 @@ class AutomatedTransaction:
         authenticator = Authenticator.deserialize(deserializer)
         block_height = deserializer.u64()
         return AutomatedTransaction(raw_txn, authenticator, block_height)
+
+
+@dataclass
+class CancellationCommand:
+    simulate: bool
+    task_index: int
+    txn_options: SupraTransactionOptions
+
+    def execute(self):
+        """
+        Execute the automation task cancellation command.
+        This mirrors the Rust implementation that calls automation_registry_cancel_task.
+        """
+        transaction_arguments = [
+            TransactionArgument(self.task_index, Serializer.u64),
+        ]
+
+        payload = EntryFunction.natural(
+            "0x1::automation_registry",  # Standard library automation registry module
+            "cancel_task",  # Function name in the module
+            [],  # No type arguments needed
+            transaction_arguments,  # The task_index argument
+        )
+
+        sender = self.txn_options.profile_options.sender_account
+        client = self.txn_options.rest_options
 
 
 class Test(unittest.TestCase):
