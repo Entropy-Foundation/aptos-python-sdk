@@ -24,6 +24,7 @@ from .api_types import (
     TransactionType,
 )
 from .authenticator import Authenticator, MultiAgentAuthenticator
+from .auto_txn_types import AutomationRegistrationPayload
 from .bcs import Serializer
 from .metadata import Metadata
 from .transactions import (
@@ -747,7 +748,7 @@ class RestClient:
         Registers a new automation task with the automation registry.
 
         This method mirrors the Rust implementation that creates AutomationRegistration
-        with RegistrationParams. Follows the same pattern as cancel_automation_task for consistency.
+        with RegistrationParams.
 
         Args:
             sender (Account): The account that will sign and send the transaction
@@ -765,32 +766,19 @@ class RestClient:
         Raises:
             ApiError: If the API request fails
         """
-
-        transaction_arguments = [
-            TransactionArgument(
-                task_payload, Serializer.struct
-            ),  # The task payload (EntryFunction)
-            TransactionArgument(task_expiry_time_secs, Serializer.u64),
-            TransactionArgument(task_max_gas_amount, Serializer.u64),
-            TransactionArgument(task_gas_price_cap, Serializer.u64),
-            TransactionArgument(task_automation_fee_cap, Serializer.u64),
-            TransactionArgument(
-                [], Serializer.sequence
-            ),  # auxiliary_data (empty vector)
-        ]
-
-        # Create the payload for the automation registry register function
-        # Based on: TransactionPayload::AutomationRegistration(registration_params) from Rust
-        payload = EntryFunction.natural(
-            "0x1::automation_registry",  # Standard library automation registry module
-            # Function name in the module (assuming this is the function name)
-            "register_task",
-            [],  # No type arguments needed
-            transaction_arguments,  # The registration parameters
+        automation_payload = AutomationRegistrationPayload(
+            task_payload,
+            task_expiry_time_secs,
+            task_max_gas_amount,
+            task_gas_price_cap,
+            task_automation_fee_cap,
+            [],  # auxiliary_data (empty vector)
         )
 
         signed_transaction = await self.create_bcs_signed_transaction(
-            sender, TransactionPayload(payload), sequence_number=sequence_number
+            sender,
+            TransactionPayload(automation_payload),
+            sequence_number=sequence_number,
         )
 
         if simulate:
@@ -809,7 +797,6 @@ class RestClient:
         Cancels an automation task by calling the automation registry.
 
         This method mirrors the Rust implementation that calls automation_registry_cancel_task.
-        Follows the same pattern as bcs_transfer for consistency.
 
         Args:
             sender (Account): The account that will sign and send the transaction
@@ -858,7 +845,6 @@ class RestClient:
         Stop/Immediately cancel registered automation tasks by indexes.
 
         This method mirrors the Rust implementation that calls automation_registry_stop_tasks.
-        Follows the same pattern as cancel_automation_task for consistency.
 
         Args:
             sender (Account): The account that will sign and send the transaction
