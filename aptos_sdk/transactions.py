@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import unittest
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 
 from typing_extensions import Protocol
 
@@ -210,7 +210,6 @@ class TransactionPayload:
     MODULE_BUNDLE: int = 1
     SCRIPT_FUNCTION: int = 2
     MULTISIG: int = 3
-    AUTOMATION_REGISTRATION: int = 4
 
     variant: int
     value: Any
@@ -224,11 +223,22 @@ class TransactionPayload:
             self.variant = TransactionPayload.SCRIPT_FUNCTION
         elif isinstance(payload, Multisig):
             self.variant = TransactionPayload.MULTISIG
-        elif isinstance(payload, AutomationRegistrationPayload):  # ADD THIS ELIF
-            self.variant = TransactionPayload.AUTOMATION_REGISTRATION
         else:
             raise Exception("Invalid type")
         self.value = payload
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert payload to dictionary format for SMR transactions"""
+        if self.variant in [
+            TransactionPayload.SCRIPT,
+            TransactionPayload.MODULE_BUNDLE,
+            TransactionPayload.SCRIPT_FUNCTION,
+            TransactionPayload.MULTISIG,
+        ]:
+            # return {"variant": self.variant, "value": self.value.to_dict()}
+            return self.value.to_dict()
+        else:
+            raise Exception("Invalid payload type for conversion")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TransactionPayload):
@@ -400,6 +410,23 @@ class EntryFunction:
         self.function = function
         self.ty_args = ty_args
         self.args = args
+
+    def to_dict(self) -> Dict[str, Any]:
+        # return {
+        #     "type": "entry_function_payload",
+        #     "function": f"{self.module.address}::{self.module.name}::{self.function}",
+        #     "type_arguments": self.ty_args,
+        #     "arguments": [arg.hex() for arg in self.args],
+        # }
+        return {
+            "module": {
+                "address": str(self.module.address.__str__()),
+                "name": self.module.name,
+            },
+            "function": self.function,
+            "ty_args": self.ty_args,
+            "args": [arg.hex() for arg in self.args],
+        }
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, EntryFunction):
@@ -730,6 +757,16 @@ class AutomationRegistrationPayload:
         self.task_automation_fee_cap = task_automation_fee_cap
         self.auxiliary_data = auxiliary_data
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "payload": self.payload.to_dict(),  # This is an EntryFunction
+            "task_expiry_time_secs": self.task_expiry_time_secs,
+            "task_max_gas_amount": self.task_max_gas_amount,
+            "task_gas_price_cap": self.task_gas_price_cap,
+            "task_automation_fee_cap": self.task_automation_fee_cap,
+            "auxiliary_data": self.auxiliary_data,
+        }
+
     @staticmethod
     def deserialize(deserializer: Deserializer) -> "AutomationRegistrationPayload":
         """Deserialize the automation registration payload"""
@@ -790,6 +827,292 @@ class AutomationRegistrationPayload:
         return f"AutomationRegistration(payload={self.payload}, expiry={self.task_expiry_time_secs}, max_gas={self.task_max_gas_amount})"
 
 
+class SupraTransaction:
+    SMR: int = 0
+    MOVE: int = 1
+
+    variant: int
+    value: Union[SignedSmrTransaction, SignedTransaction]
+
+    def __init__(self, transaction: Union[SignedSmrTransaction, SignedTransaction]):
+        if (
+            hasattr(transaction, "__class__")
+            and transaction.__class__.__name__ == "SignedSmrTransaction"
+        ):
+            self.variant = SupraTransaction.SMR
+        elif (
+            hasattr(transaction, "__class__")
+            and transaction.__class__.__name__ == "SignedTransaction"
+        ):
+            self.variant = SupraTransaction.MOVE
+        else:
+            raise Exception("Invalid transaction type for SupraTransaction")
+
+        self.value = transaction
+
+    @staticmethod
+    def create_move_transaction(
+        signed_transaction: "SignedTransaction",
+    ) -> "SupraTransaction":
+        """Create a SupraTransaction with Move variant"""
+        return SupraTransaction(signed_transaction)
+
+    @staticmethod
+    def create_smr_transaction(
+        signed_smr_transaction: "SignedSmrTransaction",
+    ) -> "SupraTransaction":
+        """Create a SupraTransaction with SMR variant"""
+        return SupraTransaction(signed_smr_transaction)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SupraTransaction):
+            return NotImplemented
+        return self.variant == other.variant and self.value == other.value
+
+    def __str__(self) -> str:
+        variant_name = "SMR" if self.variant == SupraTransaction.SMR else "MOVE"
+        return f"SupraTransaction::{variant_name}({self.value})"
+
+    def serialize(self, serializer: Serializer) -> None:
+        serializer.uleb128(self.variant)
+        self.value.serialize(serializer)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "SupraTransaction":
+        variant = deserializer.uleb128()
+
+        if variant == SupraTransaction.SMR:
+            transaction = SignedSmrTransaction.deserialize(deserializer)
+        elif variant == SupraTransaction.MOVE:
+            transaction = SignedTransaction.deserialize(deserializer)
+        else:
+            raise Exception(f"Invalid SupraTransaction variant: {variant}")
+
+        return SupraTransaction(transaction)
+
+    def bytes(self) -> bytes:
+        """Helper method to get serialized bytes"""
+        serializer = Serializer()
+        self.serialize(serializer)
+        return serializer.output()
+
+
+"""
+"Smr": {
+    "signer_data": self.signer_data,
+    "transaction": {
+        "header": {
+            "chain_id": self.raw_transaction.chain_id,
+            "expiration_timestamp": {
+                "microseconds_since_unix_epoch": self.raw_transaction.expiration_timestamps_secs
+                * 1000000,
+                "utc_date_time": datetime.datetime.fromtimestamp(
+                    self.raw_transaction.expiration_timestamps_secs,
+                    tz=datetime.timezone.utc,
+                ).isoformat(),
+            },
+            "sender": {"Supra": self.raw_transaction.sender.__str__()},
+            "sequence_number": self.raw_transaction.sequence_number,
+            "gas_unit_price": self.raw_transaction.gas_unit_price,
+            "max_gas_amount": self.raw_transaction.max_gas_amount,
+        },
+        "payload": {"Oracle": self.raw_transaction.payload.to_dict()},
+    },
+}
+"""
+
+
+class SignedSmrTransaction:
+    def __init__(self, signer_data: SignerData, transaction: UnsignedSmrTransaction):
+        self.signer_data = signer_data
+        self.transaction = transaction
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SignedSmrTransaction):
+            return NotImplemented
+        return (
+            self.signer_data == other.signer_data
+            and self.transaction == other.transaction
+        )
+
+    def __str__(self) -> str:
+        return f"SignedSmrTransaction(signer_data={self.signer_data}, transaction={self.transaction})"
+
+    def serialize(self, serializer: Serializer) -> None:
+        self.signer_data.serialize(serializer)
+        self.transaction.serialize(serializer)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "SignedSmrTransaction":
+        signer_data = SignerData.deserialize(deserializer)
+        transaction = UnsignedSmrTransaction.deserialize(deserializer)
+        return SignedSmrTransaction(signer_data, transaction)
+
+
+class SignerData:
+    def __init__(self, signer: bytes, signature: bytes):
+        self.signer = signer  # PublicKey bytes
+        self.signature = signature  # Signature bytes
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SignerData):
+            return NotImplemented
+        return self.signer == other.signer and self.signature == other.signature
+
+    def __str__(self) -> str:
+        return (
+            f"SignerData(signer={self.signer.hex()}, signature={self.signature.hex()})"
+        )
+
+    def serialize(self, serializer: Serializer) -> None:
+        # Assuming Ed25519 keys and signature
+        serializer.fixed_bytes(self.signer)
+        serializer.fixed_bytes(self.signature)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "SignerData":
+        signer = deserializer.fixed_bytes(32)  # Ed25519 public key length
+        signature = deserializer.fixed_bytes(64)  # Ed25519 signature length
+        return SignerData(signer, signature)
+
+
+class UnsignedSmrTransaction:
+    def __init__(self, header: SmrTransactionHeader, payload: SmrTransactionPayload):
+        self.header = header
+        self.payload = payload
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, UnsignedSmrTransaction):
+            return NotImplemented
+        return self.header == other.header and self.payload == other.payload
+
+    def __str__(self) -> str:
+        return f"UnsignedSmrTransaction(header={self.header}, payload={self.payload})"
+
+    def serialize(self, serializer: Serializer) -> None:
+        self.header.serialize(serializer)
+        self.payload.serialize(serializer)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "UnsignedSmrTransaction":
+        header = SmrTransactionHeader.deserialize(deserializer)
+        payload = SmrTransactionPayload.deserialize(deserializer)
+        return UnsignedSmrTransaction(header, payload)
+
+
+class SmrTransactionHeader:
+    def __init__(
+        self,
+        chain_id: int,
+        expiration_timestamp: int,
+        sender: "AccountAddress",
+        sequence_number: int,
+        gas_unit_price: int,
+        max_gas_amount: int,
+    ):
+        self.chain_id = chain_id
+        self.expiration_timestamp = expiration_timestamp
+        self.sender = sender
+        self.sequence_number = sequence_number
+        self.gas_unit_price = gas_unit_price
+        self.max_gas_amount = max_gas_amount
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SmrTransactionHeader):
+            return NotImplemented
+        return (
+            self.chain_id == other.chain_id
+            and self.expiration_timestamp == other.expiration_timestamp
+            and self.sender == other.sender
+            and self.sequence_number == other.sequence_number
+            and self.gas_unit_price == other.gas_unit_price
+            and self.max_gas_amount == other.max_gas_amount
+        )
+
+    def serialize(self, serializer: Serializer) -> None:
+        serializer.u64(self.chain_id)
+        # Assuming SmrTimestamp is u64
+        serializer.u64(self.expiration_timestamp)
+        self.sender.serialize(serializer)
+        serializer.u64(self.sequence_number)
+        serializer.u128(self.gas_unit_price)
+        serializer.u64(self.max_gas_amount)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "SmrTransactionHeader":
+        chain_id = deserializer.u64()
+        expiration_timestamp = deserializer.u64()
+        sender = AccountAddress.deserialize(deserializer)
+        sequence_number = deserializer.u64()
+        gas_unit_price = deserializer.u128()
+        max_gas_amount = deserializer.u64()
+        return SmrTransactionHeader(
+            chain_id,
+            expiration_timestamp,
+            sender,
+            sequence_number,
+            gas_unit_price,
+            max_gas_amount,
+        )
+
+
+class SmrTransactionPayload:
+    DKG: int = 0
+    ORACLE: int = 1
+
+    def __init__(self, payload_type: int, data: bytes):
+        self.payload_type = payload_type
+        self.data = data  # Simplified - just store as bytes for now
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SmrTransactionPayload):
+            return NotImplemented
+        return self.payload_type == other.payload_type and self.data == other.data
+
+    def serialize(self, serializer: Serializer) -> None:
+        serializer.uleb128(self.payload_type)
+        serializer.bytes(self.data)
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> "SmrTransactionPayload":
+        payload_type = deserializer.uleb128()
+        data = deserializer.bytes()
+        return SmrTransactionPayload(payload_type, data)
+
+    @staticmethod
+    def create_dkg_payload(data: bytes) -> "SmrTransactionPayload":
+        return SmrTransactionPayload(SmrTransactionPayload.DKG, data)
+
+    @staticmethod
+    def create_oracle_payload(data: bytes) -> "SmrTransactionPayload":
+        return SmrTransactionPayload(SmrTransactionPayload.ORACLE, data)
+
+
+class MoveTransaction:
+    def __init__(self, raw_transaction: RawTransaction, authenticator_data: Dict):
+        self.raw_transaction = raw_transaction
+        self.authenticator_data = authenticator_data
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "Move": {
+                "raw_txn": {
+                    "sender": self.raw_transaction.sender.__str__(),
+                    "sequence_number": self.raw_transaction.sequence_number,
+                    # "payload": self.raw_transaction.payload.to_dict(),
+                    "payload": {
+                        "EntryFunction": self.raw_transaction.payload.value.to_dict()
+                    },
+                    "max_gas_amount": self.raw_transaction.max_gas_amount,
+                    "gas_unit_price": self.raw_transaction.gas_unit_price,
+                    "expiration_timestamp_secs": self.raw_transaction.expiration_timestamps_secs,
+                    "chain_id": self.raw_transaction.chain_id,
+                },
+                "authenticator": self.authenticator_data,
+            }
+        }
+
+
 class AutomationRegistrationPayload:
     """
     Represents an automation registration payload, mirroring the Rust RegistrationParams.
@@ -811,6 +1134,16 @@ class AutomationRegistrationPayload:
         self.task_gas_price_cap = task_gas_price_cap
         self.task_automation_fee_cap = task_automation_fee_cap
         self.auxiliary_data = auxiliary_data
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "payload": self.payload.to_dict(),
+            "task_expiry_time_secs": self.task_expiry_time_secs,
+            "task_max_gas_amount": self.task_max_gas_amount,
+            "task_gas_price_cap": self.task_gas_price_cap,
+            "task_automation_fee_cap": self.task_automation_fee_cap,
+            "auxiliary_data": self.auxiliary_data,
+        }
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> "AutomationRegistrationPayload":
@@ -963,7 +1296,6 @@ class Test(unittest.TestCase):
         self.assertTrue(signed_transaction_generated.verify())
 
         # Validated corpus
-
         raw_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d20296490000000004"
         signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d202964900000000040020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040f25b74ec60a38a1ed780fd2bef6ddb6eb4356e3ab39276c9176cdf0fcae2ab37d79b626abb43d926e91595b66503a4a3c90acbae36a28d405e308f3537af720b"
 
