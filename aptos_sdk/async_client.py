@@ -24,14 +24,17 @@ from .api_types import (
     TransactionType,
 )
 from .authenticator import Authenticator, MultiAgentAuthenticator
-from .auto_txn_types import AutomationRegistrationPayload
 from .bcs import Serializer
 from .metadata import Metadata
 from .transactions import (
+    AutomationRegistrationPayload,
     EntryFunction,
+    MoveTransaction,
     MultiAgentRawTransaction,
     RawTransaction,
+    SignedSmrTransaction,
     SignedTransaction,
+    SupraTransaction,
     TransactionArgument,
     TransactionPayload,
 )
@@ -150,8 +153,16 @@ class RestClient:
         """
 
         if not self._chain_id:
-            info = await self.info()
-            self._chain_id = int(info["chain_id"])
+            endpoint = "rpc/v3/transactions/chain_id"
+            resp = await self._get(endpoint=endpoint)
+            if resp.status_code != HTTPStatus.OK:
+                raise ApiError(f"{resp.text}", resp.status_code)
+            result = resp.json()
+            self._chain_id = (
+                int(result)
+                if isinstance(result, (int, str))
+                else int(result.get("chain_id", result))
+            )
         return self._chain_id
 
     ###########
@@ -174,13 +185,13 @@ class RestClient:
             Dict[str, str]: The account metadata.
         """
 
-        endpoint = f"rpc/v3/accounts/{account_address}"
+        endpoint = f"rpc/v3/accounts/{account_address.__str__()}"
         headers = {"Accept": accept_type.value}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
 
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
         return resp.json()
 
     async def account_transaction(
@@ -209,14 +220,14 @@ class RestClient:
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
 
-        endpoint = f"rpc/v3/accounts/{account_address}/transactions"
+        endpoint = f"rpc/v3/accounts/{account_address.__str__()}/transactions"
         headers = {"Accept": accept_type.value}
         params = pagination_with_order.to_params() if pagination_with_order else {}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
         return resp.json()
 
     async def account_automated_transactions(
@@ -248,7 +259,7 @@ class RestClient:
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
 
-        endpoint = f"rpc/v3/accounts/{address}/automated_transactions"
+        endpoint = f"rpc/v3/accounts/{address.__str__()}/automated_transactions"
         headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
@@ -266,7 +277,7 @@ class RestClient:
         pagination: Optional[AccountCoinTxPaginationWithOrder] = None,
         # txn_type: None,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Fetches coin-specific transactions for a given account.
 
@@ -286,14 +297,14 @@ class RestClient:
             accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
-        endpoint = f"rpc/v3/accounts/{account_address}/coin_transactions"
+        endpoint = f"rpc/v3/accounts/{account_address.__str__()}/coin_transactions"
         headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
         return resp.json()
 
     async def account_resources(
@@ -301,7 +312,7 @@ class RestClient:
         account_address: AccountAddress,
         pagination: Optional[AccountPublishedListPagination] = None,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Fetches the full list of resources associated with an account.
 
@@ -321,14 +332,14 @@ class RestClient:
             accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
-        endpoint = f"rpc/v3/accounts/{account_address}/resources"
+        endpoint = f"rpc/v3/accounts/{account_address.__str__()}/resources"
         headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
         return resp.json()
 
     async def account_modules(
@@ -336,7 +347,7 @@ class RestClient:
         account_address: AccountAddress,
         pagination: Optional[AccountPublishedListPagination] = None,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """
         Fetches the Move modules published under a given account.
 
@@ -362,8 +373,8 @@ class RestClient:
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=params)
 
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {account_address}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
         return resp.json()
 
     async def account_specific_resource(
@@ -375,7 +386,7 @@ class RestClient:
         Fetches a specific resource from an account.
 
         Args:
-            path_param (Tuple[AccountAddress, str]): A tuple of (address, resource_struct_tag).
+            path_param (Tuple[AccountAddress, str]): A tuple of (address, resouce_struct_tag).
             accept_type (str): Desired content type of the response.
 
         Returns:
@@ -387,12 +398,12 @@ class RestClient:
 
         self._check_accept_type(accept_type.value, [SupraRestAcceptType.OCTET.value])
         address, tag_string = path_param[0], path_param[1]
-        endpoint = f"rpc/v3/accounts/{address}/resources/{tag_string}"
+        endpoint = f"rpc/v3/accounts/{address.__str__()}/resources/{tag_string}"
         headers = {"Accept": accept_type.value}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {address}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {address}", resp.status_code)
         return resp.json()
 
     async def account_specific_modules(
@@ -420,8 +431,8 @@ class RestClient:
         headers = {"Accept": accept_type.value}
 
         resp = await self._get(endpoint=endpoint, headers=headers, params=None)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {address}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {address}", resp.status_code)
         return resp.json()
 
     ################
@@ -441,8 +452,8 @@ class RestClient:
         endpoint = "rpc/v2/transactions/estimate_gas_price"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status >= HTTPStatus.BAD_REQUEST:
-            raise ApiError(f"{resp.text}", resp.status)
+        if resp.status_code >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(f"{resp.text}", resp.status_code)
         return resp.json()
 
     async def transaction_parameters(self) -> Dict[str, Any]:
@@ -459,8 +470,8 @@ class RestClient:
         endpoint = "rpc/v1/transactions/parameters"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status >= HTTPStatus.BAD_REQUEST:
-            raise ApiError(f"{resp.text}", resp.status)
+        if resp.status_code >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(f"{resp.text}", resp.status_code)
         return resp.json()
 
     async def transaction_by_hash(self, hash: str) -> Dict[str, Any]:
@@ -480,13 +491,13 @@ class RestClient:
         endpoint = f"rpc/v3/transactions/{hash}"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {hash}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {hash}", resp.status_code)
         return resp.json()
 
     async def submit_txn(
-        self, transaction_data: Union[Dict[str, Any], bytes]
-    ) -> Dict[str, Any]:
+        self, transaction_data: Union[MoveTransaction, SupraTransaction, bytes]
+    ) -> str:
         """
         Submits a signed transaction for execution.
 
@@ -501,14 +512,14 @@ class RestClient:
         """
 
         endpoint = "rpc/v3/transactions/submit"
-
-        resp = await self._post(endpoint=endpoint, data=transaction_data)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {transaction_data}", resp.status)
+        txn_data = transaction_data.to_dict()
+        resp = await self._post(endpoint=endpoint, data=txn_data)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {txn_data}", resp.status_code)
         return resp.json()
 
     async def simulate_tx(
-        self, transaction_data: Union[Dict[str, Any], bytes]
+        self, transaction_data: Union[SupraTransaction, bytes]
     ) -> Dict[str, Any]:
         """
         Simulates a transaction without submitting it to the chain.
@@ -524,55 +535,34 @@ class RestClient:
         """
 
         endpoint = "rpc/v3/transactions/simulate"
-
-        resp = await self._post(endpoint=endpoint, data=transaction_data)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {transaction_data}", resp.status)
+        txn_data = transaction_data.to_dict()
+        resp = await self._post(endpoint=endpoint, data=txn_data)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {txn_data}", resp.status_code)
         return resp.json()
 
-    async def simulate_bcs_transaction(
-        self,
-        signed_transaction: SignedTransaction,
-        estimate_gas_usage: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        NOT PRESENT IN SUPRA
-        """
-        headers = {"Content-Type": "application/x.aptos.signed_transaction+bcs"}
-        params = {}
-        if estimate_gas_usage:
-            params = {
-                "estimate_gas_unit_price": "true",
-                "estimate_max_gas_amount": "true",
-            }
-
-        response = await self.client.post(
-            f"{self.base_url}/transactions/simulate",
-            params=params,
-            headers=headers,
-            content=signed_transaction.bytes(),
+    async def simulate_bcs_txn(self, transaction_data: bytes) -> Dict[str, Any]:
+        """ """
+        headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
+        endpoint = "rpc/v3/transactions/simulate"
+        resp = await self._post(
+            endpoint=endpoint, data=transaction_data, headers=headers
         )
-        if response.status_code >= HTTPStatus.BAD_REQUEST:
-            raise ApiError(response.text, response.status_code)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {transaction_data}", resp.status_code)
+        return resp.json()
 
-        return response.json()
+    async def submit_bcs_txn(self, transaction_data: bytes) -> str:
+        """ """
 
-    async def submit_bcs_transaction(
-        self, signed_transaction: SignedTransaction
-    ) -> str:
-        """
-        NOT PRESENT IN SUPRA
-        """
-
-        headers = {"Content-Type": "application/x.aptos.signed_transaction+bcs"}
-        response = await self.client.post(
-            f"{self.base_url}/transactions",
-            headers=headers,
-            content=signed_transaction.bytes(),
+        endpoint = "rpc/v3/transactions/submit"
+        headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
+        resp = await self._post(
+            endpoint=endpoint, data=transaction_data, headers=headers
         )
-        if response.status_code >= HTTPStatus.BAD_REQUEST:
-            raise ApiError(response.text, response.status_code)
-        return response.json()["hash"]
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {transaction_data}", resp.status_code)
+        return resp.json()
 
     async def submit_and_wait_for_bcs_transaction(
         self, signed_transaction: SignedTransaction
@@ -766,7 +756,7 @@ class RestClient:
         Raises:
             ApiError: If the API request fails
         """
-        automation_payload = AutomationRegistrationPayload(
+        payload = AutomationRegistrationPayload(
             task_payload,
             task_expiry_time_secs,
             task_max_gas_amount,
@@ -775,16 +765,33 @@ class RestClient:
             [],  # auxiliary_data (empty vector)
         )
 
-        signed_transaction = await self.create_bcs_signed_transaction(
-            sender,
-            TransactionPayload(automation_payload),
+        raw_transaction = RawTransaction(
+            sender=sender.address(),
             sequence_number=sequence_number,
+            payload=TransactionPayload(
+                payload
+            ),  # or automation_payload for register method
+            max_gas_amount=task_max_gas_amount,  # Use appropriate gas amount for each method
+            gas_unit_price=task_gas_price_cap,  # Use appropriate gas price for each method
+            # Use appropriate expiry for each method
+            expiration_timestamps_secs=task_expiry_time_secs,
+            chain_id=await self.chain_id(),  # Assuming you have this method
         )
 
+        signer_data = {
+            # "signer": sender.address().__str__(),
+            "signer": sender.public_key().to_crypto_bytes().hex(),
+            "signature": str(sender.sign(raw_transaction.keyed())),
+        }
+
+        print("signer_data:", signer_data)
+
+        smr_transaction = SignedSmrTransaction(raw_transaction, signer_data)
+
         if simulate:
-            return await self.simulate_bcs_transaction(signed_transaction, True)
+            return await self.simulate_tx(smr_transaction)
         else:
-            return await self.submit_bcs_transaction(signed_transaction)
+            return await self.submit_tx(smr_transaction)
 
     async def cancel_automation_task(
         self,
@@ -860,7 +867,10 @@ class RestClient:
         """
 
         transaction_arguments = [
-            TransactionArgument(task_indexes, Serializer.sequence),
+            TransactionArgument(
+                task_indexes,
+                lambda serializer, vals: serializer.sequence(vals, Serializer.u64),
+            ),
         ]
 
         # Create the payload for the automation registry stop_tasks function
@@ -982,8 +992,8 @@ class RestClient:
         endpoint = "rpc/v3/block"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - NIL", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - NIL", resp.status_code)
         return resp.json()
 
     async def block_info_by_hash(self, block_hash: str) -> Dict[str, Any]:
@@ -1003,8 +1013,8 @@ class RestClient:
         endpoint = f"rpc/v3/block/{block_hash}"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {block_hash}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {block_hash}", resp.status_code)
         return resp.json()
 
     async def block_by_height(
@@ -1036,13 +1046,13 @@ class RestClient:
             params["transaction_type"] = transaction_type.value
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {height}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {height}", resp.status_code)
         return resp.json()
 
     async def txs_by_block(
         self, block_hash: str, transaction_type: Optional[TransactionType] = None
-    ) -> Dict[str, Any]:
+    ) -> List:
         """
         Fetches transactions for a given block hash.
 
@@ -1064,8 +1074,8 @@ class RestClient:
             params["transaction_type"] = transaction_type.value
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {block_hash}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {block_hash}", resp.status_code)
         return resp.json()
 
     async def latest_consensus_block(
@@ -1089,8 +1099,8 @@ class RestClient:
         params = with_batches.to_params() if with_batches is not None else {}
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status >= HTTPStatus.BAD_REQUEST:
-            raise ApiError(f"{resp.text}", resp.status)
+        if resp.status_code >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(f"{resp.text}", resp.status_code)
         return resp.json()
 
     async def consensus_block(
@@ -1146,7 +1156,7 @@ class RestClient:
             Dict[str, Any]: Item of the table as MoveValueApi.
         """
 
-        endpoint = f"rpc/v2/tables/{table_handle}/item"
+        endpoint = f"rpc/v2/tables/{table_handle.__str__()}/item"
         content = (
             table_item_request.to_params() if table_item_request is not None else {}
         )
@@ -1157,8 +1167,10 @@ class RestClient:
             headers={"content-type": "application/json"},
         )
 
-        if resp.status >= HTTPStatus.BAD_REQUEST:
-            raise ApiError(f"{resp.text} - table_handle: {table_handle}", resp.status)
+        if resp.status_code >= HTTPStatus.BAD_REQUEST:
+            raise ApiError(
+                f"{resp.text} - table_handle: {table_handle}", resp.status_code
+            )
         return resp.json()
 
     ########
@@ -1182,8 +1194,8 @@ class RestClient:
         endpoint = "rpc/v3/view"
 
         resp = await self._post(endpoint=endpoint, data=data)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {data}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {data}", resp.status_code)
         return resp.json()
 
     ##########
@@ -1212,8 +1224,8 @@ class RestClient:
         params = query.to_params() if query is not None else {}
 
         resp = await self._get(endpoint=endpoint, params=params)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {event_type} || {query}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - {event_type} || {query}", resp.status_code)
         return resp.json()
 
     ##########
@@ -1234,11 +1246,13 @@ class RestClient:
             ApiError: If the API request fails with a non-200 status code.
         """
 
-        endpoint = f"rpc/v1/wallet/faucet/{address}"
+        endpoint = f"rpc/v1/wallet/faucet/{address.__str__()}"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - account_address: {address}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(
+                f"{resp.text} - account_address: {address}", resp.status_code
+            )
         return resp.json()
 
     async def faucet_transaction_by_hash(self, hash: str) -> Dict[str, Any]:
@@ -1258,8 +1272,8 @@ class RestClient:
         endpoint = f"rpc/v2/wallet/faucet/transactions/{hash}"
 
         resp = await self._get(endpoint=endpoint)
-        if resp.status != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - hash: {hash}", resp.status)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - hash: {hash}", resp.status_code)
         return resp.json()
 
     ###########
