@@ -1099,7 +1099,6 @@ class MoveTransaction:
                 "raw_txn": {
                     "sender": self.raw_transaction.sender.__str__(),
                     "sequence_number": self.raw_transaction.sequence_number,
-                    # "payload": self.raw_transaction.payload.to_dict(),
                     "payload": {
                         "EntryFunction": self.raw_transaction.payload.value.to_dict()
                     },

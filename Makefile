@@ -43,4 +43,10 @@ examples_cli:
 integration_test:
 	poetry run python -m unittest -b examples.integration_test
 
+#########
+# SUPRA #
+#########
+test-endpoints:
+	poetry run python -m unittest test.t_endpoints
+
 .PHONY: examples fmt lint test
