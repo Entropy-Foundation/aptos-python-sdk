@@ -283,6 +283,88 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         res = await self.client.submit_bcs_txn(transaction_data=bcs_txn)
         self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
 
+    async def test_create_bcs_transaction(self):
+        payload = TransactionPayload(
+            EntryFunction(
+                module=ModuleId(
+                    address=AccountAddress.from_str("0x1"),
+                    name="coin",
+                ),
+                function="transfer",
+                ty_args=[],
+                args=[],
+            )
+        )
+
+        raw_txn = await self.client.create_bcs_transaction(
+            sender=self.test_account, payload=payload
+        )
+
+        raw_txn_keyed = raw_txn.keyed()
+        signature = self.test_account.sign(raw_txn_keyed)
+
+        ed25519_auth = Ed25519Authenticator(
+            public_key=self.test_account.public_key(), signature=signature
+        )
+        authenticator = Authenticator(ed25519_auth)
+
+        signed_txn = SignedTransaction(transaction=raw_txn, authenticator=authenticator)
+
+        supra_txn = SupraTransaction.create_move_transaction(signed_txn)
+        supra_serializer = Serializer()
+        supra_txn.serialize(supra_serializer)
+
+        res = await self.client.submit_bcs_txn(
+            transaction_data=supra_serializer.output()
+        )
+        self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
+
+    async def test_create_bcs_signed_transaction(self):
+        payload = TransactionPayload(
+            EntryFunction(
+                module=ModuleId(
+                    address=AccountAddress.from_str("0x1"),
+                    name="coin",
+                ),
+                function="transfer",
+                ty_args=[],
+                args=[],
+            )
+        )
+
+        bcs_txn_bytes = await self.client.create_bcs_signed_transaction(
+            sender=self.test_account, payload=payload
+        )
+
+        self.assertIsInstance(bcs_txn_bytes, bytes)
+        self.assertGreater(
+            len(bcs_txn_bytes), 0, "FAIL: BCS transaction bytes should not be empty"
+        )
+
+        res = await self.client.submit_bcs_txn(transaction_data=bcs_txn_bytes)
+        self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
+
+    async def test_transaction_by_hash(self):
+        account = await self.client.account(
+            account_address=self.test_account.account_address
+        )
+        chain_id = await self.client.chain_id()
+
+        move_txn = self.create_move_txn(
+            sender=self.test_account,
+            signer=self.test_account,
+            account_info=account,
+            chain_id=chain_id,
+        )
+        hash = await self.client.submit_txn(transaction_data=move_txn)
+
+        time.sleep(5)  # Must be replaced by wait_for_transaction function
+        # await self.client.wait_for_transaction(hash)
+        res = await self.client.transaction_by_hash(hash)
+        self.assertEqual(
+            res["hash"], hash, "FAIL: Hash of cannot change after submission"
+        )
+
     def create_move_txn(
         self,
         sender: Account,
@@ -345,7 +427,6 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
     ) -> bytes:
         serializer = Serializer()
 
-        # Simple transaction payload - transfer function
         payload = TransactionPayload(
             EntryFunction(
                 module=ModuleId(
@@ -361,7 +442,6 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         payload.serialize(serializer)
         payload_bytes = serializer.output()
 
-        # Validate payload variant
         if payload_bytes[0] > 2:
             print(f"ERROR: Invalid payload variant {payload_bytes[0]} for Supra")
             return
