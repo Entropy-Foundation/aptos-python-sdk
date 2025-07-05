@@ -23,7 +23,7 @@ from .api_types import (
     TableItemRequest,
     TransactionType,
 )
-from .authenticator import Authenticator, MultiAgentAuthenticator
+from .authenticator import Authenticator, Ed25519Authenticator, MultiAgentAuthenticator
 from .bcs import Serializer
 from .metadata import Metadata
 from .transactions import (
@@ -542,7 +542,6 @@ class RestClient:
         return resp.json()
 
     async def simulate_bcs_txn(self, transaction_data: bytes) -> Dict[str, Any]:
-        """ """
         headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
         endpoint = "rpc/v3/transactions/simulate"
         resp = await self._post(
@@ -553,8 +552,6 @@ class RestClient:
         return resp.json()
 
     async def submit_bcs_txn(self, transaction_data: bytes) -> str:
-        """ """
-
         endpoint = "rpc/v3/transactions/submit"
         headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
         resp = await self._post(
@@ -565,23 +562,14 @@ class RestClient:
         return resp.json()
 
     async def submit_and_wait_for_bcs_transaction(
-        self, signed_transaction: SignedTransaction
+        self, signed_transaction: bytes
     ) -> Dict[str, Any]:
-        """
-        NOT PRESENT IN SUPRA
-        """
-
         txn_hash = await self.submit_bcs_transaction(signed_transaction)
         await self.wait_for_transaction(txn_hash)
         return await self.transaction_by_hash(txn_hash)
 
     async def transaction_pending(self, txn_hash: str) -> bool:
-        """
-        NOT PRESENT IN SUPRA
-        """
-
-        response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
-        # TODO(@davidiw): consider raising a different error here, since this is an ambiguous state
+        response = await self._get(endpoint=f"/rpc/v3/transactions/{txn_hash}")
         if response.status_code == HTTPStatus.NOT_FOUND:
             return True
         if response.status_code >= HTTPStatus.BAD_REQUEST:
@@ -589,10 +577,6 @@ class RestClient:
         return response.json()["type"] == "pending_transaction"
 
     async def wait_for_transaction(self, txn_hash: str) -> None:
-        """
-        NOT PRESENT IN SUPRA
-        """
-
         """
         Waits up to the duration specified in client_config for a transaction to move past pending
         state.
@@ -606,30 +590,11 @@ class RestClient:
             await asyncio.sleep(1)
             count += 1
 
-        response = await self._get(endpoint=f"transactions/by_hash/{txn_hash}")
-        assert "success" in response.json() and response.json()["success"], (
-            f"{response.text} - {txn_hash}"
-        )
-
-    async def account_transaction_sequence_number_status(
-        self, address: AccountAddress, sequence_number: int
-    ) -> bool:
-        """
-        NOT PRESENT IN SUPRA
-        """
-
-        """Retrieve the state of a transaction by account and sequence number."""
-        response = await self._get(
-            endpoint=f"accounts/{address}/transactions",
-            params={
-                "limit": 1,
-                "start": sequence_number,
-            },
-        )
-        if response.status_code >= HTTPStatus.BAD_REQUEST:
-            raise ApiError(response.text, response.status_code)
-        data = response.json()
-        return len(data) == 1 and data[0]["type"] != "pending_transaction"
+        response = await self._get(endpoint=f"/rpc/v3/transactions/{txn_hash}")
+        txn_data = response.json()
+        assert txn_data.get("status") == "Success", f"Transaction failed with status: {
+            txn_data.get('status')
+        } - {txn_hash}"
 
     ########################
     # TRANSACTIONS HELPERS #
@@ -679,28 +644,28 @@ class RestClient:
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> RawTransaction:
-        """
-        NOT PRESENT IN SUPRA
-        """
+        """Create a raw BCS transaction"""
 
-        if isinstance(sender, Account):
-            sender_address = sender.address()
-        else:
-            sender_address = sender
+        # Extract sender address
+        sender_address = sender.address() if isinstance(sender, Account) else sender
 
-        sequence_number = (
-            sequence_number
-            if sequence_number is not None
-            else await self.account_sequence_number(sender_address)
-        )
+        # Get sequence number if not provided
+        if sequence_number is None:
+            account_info = await self.account(sender_address)
+            sequence_number = account_info["sequence_number"]
+
+        # Get chain ID
+        chain_id = await self.chain_id()
+
         return RawTransaction(
-            sender_address,
-            sequence_number,
-            payload,
-            self.client_config.max_gas_amount,
-            self.client_config.gas_unit_price,
-            int(time.time()) + self.client_config.expiration_ttl,
-            await self.chain_id(),
+            sender=sender_address,
+            sequence_number=sequence_number,
+            payload=payload,
+            max_gas_amount=self.client_config.max_gas_amount,
+            gas_unit_price=self.client_config.gas_unit_price,
+            expiration_timestamps_secs=int(time.time())
+            + self.client_config.expiration_ttl,
+            chain_id=chain_id,
         )
 
     async def create_bcs_signed_transaction(
@@ -709,15 +674,51 @@ class RestClient:
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> SignedTransaction:
-        """
-        NOT PRESENT IN SUPRA
-        """
+        """Create a signed BCS transaction ready for submission"""
 
-        raw_transaction = await self.create_bcs_transaction(
-            sender, payload, sequence_number
+        # Get account info and chain ID in parallel
+        account_info, chain_id = await asyncio.gather(
+            self.account(sender.address()), self.chain_id()
         )
-        authenticator = sender.sign_transaction(raw_transaction)
-        return SignedTransaction(raw_transaction, authenticator)
+
+        # Use provided sequence number or get from account
+        seq_num = (
+            sequence_number
+            if sequence_number is not None
+            else account_info["sequence_number"]
+        )
+
+        # Create raw transaction
+        raw_txn = RawTransaction(
+            sender=sender.account_address,
+            sequence_number=seq_num,
+            payload=payload,
+            max_gas_amount=self.client_config.max_gas_amount,
+            gas_unit_price=self.client_config.gas_unit_price,
+            expiration_timestamps_secs=int(time.time())
+            + self.client_config.expiration_ttl,
+            chain_id=chain_id,
+        )
+
+        # Sign the transaction
+        raw_txn_keyed = raw_txn.keyed()
+        signature = sender.sign(raw_txn_keyed)
+
+        # Create authenticator
+        ed25519_auth = Ed25519Authenticator(
+            public_key=sender.public_key(), signature=signature
+        )
+        authenticator = Authenticator(ed25519_auth)
+
+        # Create signed transaction
+        signed_txn = SignedTransaction(transaction=raw_txn, authenticator=authenticator)
+
+        # Wrap in SupraTransaction and serialize
+        supra_txn = SupraTransaction.create_move_transaction(signed_txn)
+        supra_serializer = Serializer()
+        supra_txn.serialize(supra_serializer)
+
+        return supra_serializer.output()
 
     #########################
     # TRANSACTIONS WRAPPERS #
