@@ -32,7 +32,6 @@ from .transactions import (
     MoveTransaction,
     MultiAgentRawTransaction,
     RawTransaction,
-    SignedSmrTransaction,
     SignedTransaction,
     SupraTransaction,
     TransactionArgument,
@@ -193,6 +192,12 @@ class RestClient:
         if resp.status_code != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
         return resp.json()
+
+    async def account_balance(
+        self, data: Union[Dict[str, Any], bytes]
+    ) -> Dict[str, Any]:
+        res = await self.view_function(data)
+        return res["result"][0]
 
     async def account_transaction(
         self,
@@ -564,24 +569,26 @@ class RestClient:
     async def submit_and_wait_for_bcs_transaction(
         self, signed_transaction: bytes
     ) -> Dict[str, Any]:
-        txn_hash = await self.submit_bcs_transaction(signed_transaction)
+        txn_hash = await self.submit_bcs_txn(signed_transaction)
         await self.wait_for_transaction(txn_hash)
         return await self.transaction_by_hash(txn_hash)
 
     async def transaction_pending(self, txn_hash: str) -> bool:
-        response = await self._get(endpoint=f"/rpc/v3/transactions/{txn_hash}")
-        if response.status_code == HTTPStatus.NOT_FOUND:
-            return True
-        if response.status_code >= HTTPStatus.BAD_REQUEST:
-            raise ApiError(response.text, response.status_code)
-        return response.json()["type"] == "pending_transaction"
+        try:
+            response = await self.transaction_by_hash(txn_hash)
+            return response.get("type") == "pending_transaction"
+
+        except ApiError as e:
+            if e.status_code == HTTPStatus.NOT_FOUND:
+                return True  # Transaction not found yet, keep waiting
+            else:
+                raise e
 
     async def wait_for_transaction(self, txn_hash: str) -> None:
         """
         Waits up to the duration specified in client_config for a transaction to move past pending
         state.
         """
-
         count = 0
         while await self.transaction_pending(txn_hash):
             assert count < self.client_config.transaction_wait_in_seconds, (
@@ -590,8 +597,9 @@ class RestClient:
             await asyncio.sleep(1)
             count += 1
 
-        response = await self._get(endpoint=f"/rpc/v3/transactions/{txn_hash}")
-        txn_data = response.json()
+        # Get final transaction data
+        txn_data = await self.transaction_by_hash(txn_hash)
+
         assert txn_data.get("status") == "Success", f"Transaction failed with status: {
             txn_data.get('status')
         } - {txn_hash}"
@@ -700,6 +708,8 @@ class RestClient:
             chain_id=chain_id,
         )
 
+        # print("raw_txn:> ", raw_txn.__str__())
+
         # Sign the transaction
         raw_txn_keyed = raw_txn.keyed()
         signature = sender.sign(raw_txn_keyed)
@@ -712,6 +722,8 @@ class RestClient:
 
         # Create signed transaction
         signed_txn = SignedTransaction(transaction=raw_txn, authenticator=authenticator)
+
+        # print("signed_txn:> ", signed_txn)
 
         # Wrap in SupraTransaction and serialize
         supra_txn = SupraTransaction.create_move_transaction(signed_txn)
@@ -757,42 +769,31 @@ class RestClient:
         Raises:
             ApiError: If the API request fails
         """
-        payload = AutomationRegistrationPayload(
+        automation_payload = AutomationRegistrationPayload(
             task_payload,
             task_expiry_time_secs,
             task_max_gas_amount,
             task_gas_price_cap,
             task_automation_fee_cap,
-            [],  # auxiliary_data (empty vector)
+            [],
         )
 
-        raw_transaction = RawTransaction(
-            sender=sender.address(),
-            sequence_number=sequence_number,
-            payload=TransactionPayload(
-                payload
-            ),  # or automation_payload for register method
-            max_gas_amount=task_max_gas_amount,  # Use appropriate gas amount for each method
-            gas_unit_price=task_gas_price_cap,  # Use appropriate gas price for each method
-            # Use appropriate expiry for each method
-            expiration_timestamps_secs=task_expiry_time_secs,
-            chain_id=await self.chain_id(),  # Assuming you have this method
-        )
-
-        signer_data = {
-            # "signer": sender.address().__str__(),
-            "signer": sender.public_key().to_crypto_bytes().hex(),
-            "signature": str(sender.sign(raw_transaction.keyed())),
-        }
-
-        print("signer_data:", signer_data)
-
-        smr_transaction = SignedSmrTransaction(raw_transaction, signer_data)
+        payload = TransactionPayload(automation_payload)
 
         if simulate:
-            return await self.simulate_tx(smr_transaction)
+            # Create raw transaction for simulation
+            txn_byte = await self.create_bcs_signed_transaction(
+                sender=sender, payload=payload, sequence_number=sequence_number
+            )
+
+            return await self.simulate_bcs_txn(txn_byte)
         else:
-            return await self.submit_tx(smr_transaction)
+            # Create and submit BCS transaction
+            bcs_txn_bytes = await self.create_bcs_signed_transaction(
+                sender=sender, payload=payload, sequence_number=sequence_number
+            )
+
+            return await self.submit_bcs_txn(transaction_data=bcs_txn_bytes)
 
     async def cancel_automation_task(
         self,
@@ -838,9 +839,9 @@ class RestClient:
         )
 
         if simulate:
-            return await self.simulate_bcs_transaction(signed_transaction, True)
+            return await self.simulate_bcs_txn(signed_transaction, True)
         else:
-            return await self.submit_bcs_transaction(signed_transaction)
+            return await self.submit_bcs_txn(signed_transaction)
 
     async def stop_automation_tasks(
         self,
@@ -874,7 +875,6 @@ class RestClient:
             ),
         ]
 
-        # Create the payload for the automation registry stop_tasks function
         # Based on: automation_registry_stop_tasks(task_indexes) from Rust
         payload = EntryFunction.natural(
             "0x1::automation_registry",  # Standard library automation registry module
@@ -888,9 +888,9 @@ class RestClient:
         )
 
         if simulate:
-            return await self.simulate_bcs_transaction(signed_transaction, True)
+            return await self.simulate_bcs_txn(signed_transaction, True)
         else:
-            return await self.submit_bcs_transaction(signed_transaction)
+            return await self.submit_bcs_txn(signed_transaction)
 
     # :!:>bcs_transfer
     async def bcs_transfer(
@@ -974,7 +974,7 @@ class RestClient:
             owner,
             TransactionPayload(payload),
         )
-        return await self.submit_bcs_transaction(signed_transaction)
+        return await self.submit_bcs_txn(signed_transaction)
 
     ##########
     # BLOCKS #
@@ -1233,50 +1233,6 @@ class RestClient:
     # WALLET #
     ##########
 
-    async def faucet(self, address: AccountAddress) -> Dict[str, Any]:
-        """
-        Requests faucet funds to be sent to the given account address.
-
-        Args:
-            address (AccountAddress): The target account address to receive funds.
-
-        Returns:
-            Dict[str, Any]: JSON response containing the faucet transaction information.
-
-        Raises:
-            ApiError: If the API request fails with a non-200 status code.
-        """
-
-        endpoint = f"rpc/v1/wallet/faucet/{address.__str__()}"
-
-        resp = await self._get(endpoint=endpoint)
-        if resp.status_code != HTTPStatus.OK:
-            raise ApiError(
-                f"{resp.text} - account_address: {address}", resp.status_code
-            )
-        return resp.json()
-
-    async def faucet_transaction_by_hash(self, hash: str) -> Dict[str, Any]:
-        """
-        Retrieves details of a faucet transaction by its hash.
-
-        Args:
-            hash (str): The hash of the faucet transaction.
-
-        Returns:
-            Dict[str, Any]: JSON response containing transaction details.
-
-        Raises:
-            ApiError: If the API request fails with a non-200 status code.
-        """
-
-        endpoint = f"rpc/v2/wallet/faucet/transactions/{hash}"
-
-        resp = await self._get(endpoint=endpoint)
-        if resp.status_code != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - hash: {hash}", resp.status_code)
-        return resp.json()
-
     ###########
     # HELPERS #
     ###########
@@ -1395,40 +1351,73 @@ class FaucetClient:
     async def close(self):
         await self.rest_client.close()
 
-    async def fund_account(
-        self, address: AccountAddress, amount: int, wait_for_transaction=True
-    ):
+    async def faucet(self, address: AccountAddress) -> Dict[str, Any]:
         """
-        Funds an account by minting coins. Creates the account if it doesn't exist.
+        Requests faucet funds to be sent to the given account address.
 
         Args:
-            address (AccountAddress): The address to fund.
-            amount (int): Amount of coins to mint.
-            wait_for_transaction (bool): Whether to wait for the transaction to be confirmed.
+            address (AccountAddress): The target account address to receive funds.
 
         Returns:
-            str: The transaction hash.
+            Dict[str, Any]: JSON response containing the faucet transaction information.
+
+        Raises:
+            ApiError: If the API request fails with a non-200 status code.
         """
 
-        request = f"{self.base_url}/mint?amount={amount}&address={address}"
-        response = await self.rest_client.client.post(request, headers=self.headers)
-        if response.status_code >= HTTPStatus.BAD_REQUEST:
-            raise ApiError(response.text, response.status_code)
-        txn_hash = response.json()[0]
-        if wait_for_transaction:
-            await self.rest_client.wait_for_transaction(txn_hash)
-        return txn_hash
+        endpoint = f"rpc/v1/wallet/faucet/{address.__str__()}"
 
-    async def healthy(self) -> bool:
+        resp = await self._get(endpoint=endpoint)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(
+                f"{resp.text} - account_address: {address}", resp.status_code
+            )
+        return resp.json()
+
+    async def faucet_transaction_by_hash(self, hash: str) -> Dict[str, Any]:
         """
-        Checks if the Faucet service is healthy.
+        Retrieves details of a faucet transaction by its hash.
+
+        Args:
+            hash (str): The hash of the faucet transaction.
 
         Returns:
-            bool: True if healthy, False otherwise.
+            Dict[str, Any]: JSON response containing transaction details.
+
+        Raises:
+            ApiError: If the API request fails with a non-200 status code.
         """
 
-        response = await self.rest_client.client.get(self.base_url)
-        return "tap:ok" == response.text
+        endpoint = f"rpc/v2/wallet/faucet/transactions/{hash}"
+
+        resp = await self._get(endpoint=endpoint)
+        if resp.status_code != HTTPStatus.OK:
+            raise ApiError(f"{resp.text} - hash: {hash}", resp.status_code)
+        return resp.json()
+
+    async def _get(
+        self,
+        endpoint: str,
+        headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> httpx.Response:
+        """
+        Performs an asynchronous GET request.
+
+        Args:
+            endpoint (str): Endpoint to call.
+            headers (Optional[Dict[str, str]]): Optional headers.
+            params (Optional[Dict[str, Any]]): Optional query parameters.
+
+        Returns:
+            httpx.Response: The response from the server.
+        """
+
+        params = {} if params is None else params
+        params = {key: val for key, val in params.items() if val is not None}
+        return await self.rest_client.client.get(
+            url=f"{self.base_url}/{endpoint}", params=params, headers=headers
+        )
 
 
 class ApiError(Exception):

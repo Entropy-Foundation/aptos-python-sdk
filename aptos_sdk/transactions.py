@@ -210,6 +210,7 @@ class TransactionPayload:
     MODULE_BUNDLE: int = 1
     SCRIPT_FUNCTION: int = 2
     MULTISIG: int = 3
+    AUTOMATION: int = 4
 
     variant: int
     value: Any
@@ -223,6 +224,8 @@ class TransactionPayload:
             self.variant = TransactionPayload.SCRIPT_FUNCTION
         elif isinstance(payload, Multisig):
             self.variant = TransactionPayload.MULTISIG
+        elif isinstance(payload, AutomationRegistrationPayload):
+            self.variant = TransactionPayload.AUTOMATION
         else:
             raise Exception("Invalid type")
         self.value = payload
@@ -234,6 +237,7 @@ class TransactionPayload:
             TransactionPayload.MODULE_BUNDLE,
             TransactionPayload.SCRIPT_FUNCTION,
             TransactionPayload.MULTISIG,
+            TransactionPayload.AUTOMATION,
         ]:
             # return {"variant": self.variant, "value": self.value.to_dict()}
             return self.value.to_dict()
@@ -1174,7 +1178,7 @@ class AutomationRegistrationPayload:
     def serialize(self, serializer: Serializer) -> None:
         """Serialize the automation registration payload"""
         # Version (v1 = 1)
-        serializer.u8(1)
+        serializer.u8(0)
 
         # Serialize the entry function payload
         self.payload.serialize(serializer)
