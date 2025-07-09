@@ -350,8 +350,11 @@ async def main(should_wait_input=True):
     )
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
+    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
+    supra_serializer = Serializer()
+    supra_txn.serialize(supra_serializer)
 
-    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
     await rest_client.wait_for_transaction(tx_hash)
     print(f"\nTransaction hash: {tx_hash}")
 
@@ -429,8 +432,11 @@ async def main(should_wait_input=True):
     )
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
+    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
+    supra_serializer = Serializer()
+    supra_txn.serialize(supra_serializer)
 
-    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
     await rest_client.wait_for_transaction(tx_hash)
     print(f"\nTransaction hash: {tx_hash}")
 
@@ -483,8 +489,11 @@ async def main(should_wait_input=True):
     )
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
+    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
+    supra_serializer = Serializer()
+    supra_txn.serialize(supra_serializer)
 
-    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
     await rest_client.wait_for_transaction(tx_hash)
     print(f"Transaction hash: {tx_hash}")
 
