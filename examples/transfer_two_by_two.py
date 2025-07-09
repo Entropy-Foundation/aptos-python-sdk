@@ -3,10 +3,17 @@
 
 import asyncio
 import os
+import time
 
 from aptos_sdk.account import Account
 from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.transactions import Script, ScriptArgument, TransactionPayload
+from aptos_sdk.bcs import Serializer
+from aptos_sdk.transactions import (
+    Script,
+    ScriptArgument,
+    SupraTransaction,
+    TransactionPayload,
+)
 
 from .common import FAUCET_URL, NODE_URL
 
@@ -26,16 +33,41 @@ async def main():
     print(f"Carol: {carol.address()}")
     print(f"David: {david.address()}")
 
-    alice_fund = faucet_client.fund_account(alice.address(), 100_000_000)
-    bob_fund = faucet_client.fund_account(bob.address(), 100_000_000)
-    carol_fund = faucet_client.fund_account(carol.address(), 0)
-    david_fund = faucet_client.fund_account(david.address(), 0)
+    alice_fund = faucet_client.faucet(alice.address())
+    bob_fund = faucet_client.faucet(bob.address())
+    carol_fund = faucet_client.faucet(carol.address())
+    david_fund = faucet_client.faucet(david.address())
     await asyncio.gather(*[alice_fund, bob_fund, carol_fund, david_fund])
+    time.sleep(5)
 
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    carol_balance = rest_client.account_balance(carol.address())
-    david_balance = rest_client.account_balance(david.address())
+    alice_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{alice.address().__str__()}"],
+    }
+
+    bob_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{bob.address().__str__()}"],
+    }
+
+    carol_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{carol.address().__str__()}"],
+    }
+
+    david_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{david.address().__str__()}"],
+    }
+
+    alice_balance = rest_client.account_balance(alice_data)
+    bob_balance = rest_client.account_balance(bob_data)
+    carol_balance = rest_client.account_balance(carol_data)
+    david_balance = rest_client.account_balance(david_data)
     [alice_balance, bob_balance, carol_balance, david_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, carol_balance, david_balance]
     )
@@ -60,14 +92,21 @@ async def main():
     ]
 
     payload = TransactionPayload(Script(code, [], script_arguments))
-    txn = await rest_client.create_multi_agent_bcs_transaction(alice, [bob], payload)
-    txn_hash = await rest_client.submit_bcs_transaction(txn)
+    # PPS_ERROR::> LINKER related issue
+    signed_transaction = await rest_client.create_multi_agent_bcs_transaction(
+        alice, [bob], payload
+    )
+    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
+    supra_serializer = Serializer()
+    supra_txn.serialize(supra_serializer)
+
+    txn_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
     await rest_client.wait_for_transaction(txn_hash)
 
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    carol_balance = rest_client.account_balance(carol.address())
-    david_balance = rest_client.account_balance(david.address())
+    alice_balance = rest_client.account_balance(alice_data)
+    bob_balance = rest_client.account_balance(bob_data)
+    carol_balance = rest_client.account_balance(carol_data)
+    david_balance = rest_client.account_balance(david_data)
     [alice_balance, bob_balance, carol_balance, david_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, carol_balance, david_balance]
     )
