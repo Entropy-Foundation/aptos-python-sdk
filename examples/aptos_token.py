@@ -24,8 +24,8 @@ async def main():
     print(f"Alice: {alice.address()}")
     print(f"Bob: {bob.address()}")
 
-    bob_fund = faucet_client.faucet(bob.address())  # Default: 500000000
-    alice_fund = faucet_client.faucet(alice.address())  # Default: 500000000
+    bob_fund = faucet_client.faucet(bob.address())  # Default: 500_000_000
+    alice_fund = faucet_client.faucet(alice.address())  # Default: 500_000_000
     await asyncio.gather(*[bob_fund, alice_fund])
     time.sleep(5)
 

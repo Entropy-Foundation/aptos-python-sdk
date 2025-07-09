@@ -70,10 +70,10 @@ class Test(unittest.IsolatedAsyncioTestCase):
             register_result = await self.client.register_automation_task(
                 sender=self.sender,
                 task_payload=task_payload,
-                task_max_gas_amount=10,
-                task_gas_price_cap=1,
+                task_max_gas_amount=1000,
+                task_gas_price_cap=100,
                 task_expiry_time_secs=int(time.time()) + 3600,
-                task_automation_fee_cap=1,
+                task_automation_fee_cap=1000,
                 simulate=False,
             )
             print(f"✓ Registration successful: {register_result}")
@@ -136,10 +136,10 @@ class Test(unittest.IsolatedAsyncioTestCase):
             sim_result = await self.client.register_automation_task(
                 sender=self.sender,
                 task_payload=task_payload,
-                task_max_gas_amount=5000,
-                task_gas_price_cap=150,
+                task_max_gas_amount=1000,
+                task_gas_price_cap=1,
                 task_expiry_time_secs=int(time.time()) + 3600,  # 1 hour from now
-                task_automation_fee_cap=1000,
+                task_automation_fee_cap=1,
                 simulate=True,
                 sequence_number=1,
             )

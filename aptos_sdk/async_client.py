@@ -23,7 +23,11 @@ from .api_types import (
     TableItemRequest,
     TransactionType,
 )
-from .authenticator import Authenticator, Ed25519Authenticator, MultiAgentAuthenticator
+from .authenticator import (
+    Authenticator,
+    Ed25519Authenticator,
+    MultiAgentAuthenticator,
+)
 from .bcs import Serializer
 from .metadata import Metadata
 from .transactions import (
@@ -193,11 +197,19 @@ class RestClient:
             raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
         return resp.json()
 
-    async def account_balance(
-        self, data: Union[Dict[str, Any], bytes]
-    ) -> Dict[str, Any]:
+    async def account_balance(self, data: Union[Dict[str, Any], bytes]) -> int:
         res = await self.view_function(data)
-        return res["result"][0]
+        return int(res["result"][0])
+
+    async def account_sequence_number(
+        self,
+        account_address: AccountAddress,
+        accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
+    ) -> int:
+        res = await self.account(
+            account_address=account_address, accept_type=accept_type
+        )
+        return int(res["sequence_number"])
 
     async def account_transaction(
         self,
@@ -556,12 +568,14 @@ class RestClient:
             raise ApiError(f"{resp.text} - {transaction_data}", resp.status_code)
         return resp.json()
 
-    async def submit_bcs_txn(self, transaction_data: bytes) -> str:
+    async def submit_bcs_txn(self, transaction_data: SignedTransaction | bytes) -> str:
         endpoint = "rpc/v3/transactions/submit"
         headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
+
         resp = await self._post(
             endpoint=endpoint, data=transaction_data, headers=headers
         )
+
         if resp.status_code != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {transaction_data}", resp.status_code)
         return resp.json()
@@ -708,8 +722,6 @@ class RestClient:
             chain_id=chain_id,
         )
 
-        # print("raw_txn:> ", raw_txn.__str__())
-
         # Sign the transaction
         raw_txn_keyed = raw_txn.keyed()
         signature = sender.sign(raw_txn_keyed)
@@ -722,8 +734,6 @@ class RestClient:
 
         # Create signed transaction
         signed_txn = SignedTransaction(transaction=raw_txn, authenticator=authenticator)
-
-        # print("signed_txn:> ", signed_txn)
 
         # Wrap in SupraTransaction and serialize
         supra_txn = SupraTransaction.create_move_transaction(signed_txn)
@@ -920,7 +930,7 @@ class RestClient:
             sender, TransactionPayload(payload), sequence_number=sequence_number
         )
         # <:!:bcs_transfer
-        return await self.submit_bcs_transaction(signed_transaction)
+        return await self.submit_bcs_txn(signed_transaction)
 
     async def transfer_coins(
         self,
@@ -949,7 +959,7 @@ class RestClient:
         signed_transaction = await self.create_bcs_signed_transaction(
             sender, TransactionPayload(payload), sequence_number=sequence_number
         )
-        return await self.submit_bcs_transaction(signed_transaction)
+        return await self.submit_bcs_txn(signed_transaction)
 
     async def transfer_object(
         self, owner: Account, object: AccountAddress, to: AccountAddress
