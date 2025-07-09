@@ -1,4 +1,5 @@
 import asyncio
+import time
 from typing import List, cast
 
 import aptos_sdk.asymmetric_crypto as asymmetric_crypto
@@ -132,7 +133,8 @@ async def main():
     bob = Account.generate()
 
     # Fund Alice's account, since we don't use Bob's
-    await faucet_client.fund_account(alice.address(), 100_000_000)
+    await faucet_client.faucet(alice.address())
+    time.sleep(2)
 
     # Display formatted account info
     print(
@@ -159,15 +161,15 @@ async def main():
     # Have Alice sign the transaction with the payload
     signed_transaction = await rest_client.create_bcs_signed_transaction(alice, payload)
     # Submit the transaction and wait for confirmation
-    tx_hash = await rest_client.submit_bcs_transaction(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)  # <:!:rotate_key
 
     # Check the authentication key for Alice's address on-chain
     alice_new_account_info = await rest_client.account(alice.address())
     # Ensure that Alice's authentication key matches bob's
-    assert (
-        alice_new_account_info["authentication_key"] == bob.auth_key()
-    ), "Authentication key doesn't match Bob's"
+    assert alice_new_account_info["authentication_key"] == bob.auth_key(), (
+        "Authentication key doesn't match Bob's"
+    )
 
     # Construct a new Account object that reflects alice's original address with the new private key
     original_alice_key = alice.private_key
@@ -183,7 +185,7 @@ async def main():
         rest_client, alice, [bob.private_key, original_alice_key]
     )
     signed_transaction = await rest_client.create_bcs_signed_transaction(alice, payload)
-    tx_hash = await rest_client.submit_bcs_transaction(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)
 
     alice_new_account_info = await rest_client.account(alice.address())
