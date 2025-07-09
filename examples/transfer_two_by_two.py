@@ -92,7 +92,6 @@ async def main():
     ]
 
     payload = TransactionPayload(Script(code, [], script_arguments))
-    # PPS_ERROR::> LINKER related issue
     signed_transaction = await rest_client.create_multi_agent_bcs_transaction(
         alice, [bob], payload
     )
