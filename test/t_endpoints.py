@@ -11,7 +11,7 @@ from aptos_sdk.api_types import (
     AccountTxPaginationWithOrder,
     TableItemRequest,
 )
-from aptos_sdk.async_client import ClientConfig, RestClient
+from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
 from aptos_sdk.authenticator import (
     AccountAuthenticator,
     Authenticator,
@@ -48,7 +48,7 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
         )
 
         self.client = RestClient(self.base_url, self.client_config)
-        self.faucet_client = RestClient(self.faucet_url, self.client_config)
+        self.faucet_client = FaucetClient(self.faucet_url, self.client)
         await self._fund_and_wait_for_account()
 
     async def _fund_and_wait_for_account(self):
@@ -93,6 +93,7 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
         res = await self.client.account(
             account_address=self.test_account.account_address
         )
+
         self.assertIsInstance(res, dict, "FAIL: Account wrong data-type")
         self.assertEqual(
             res["sequence_number"], 0, "FAIL:> New Acocint must have Sequence no. = 0"
@@ -100,6 +101,15 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNot(
             len(res["authentication_key"]), 0, "FAIL: Must havve authentication key"
         )
+
+    async def test_account_balance(self):
+        data = {
+            "function": "0x1::coin::balance",
+            "type_arguments": ["0x1::supra_coin::SupraCoin"],
+            "arguments": [f"{self.test_account.account_address.__str__()}"],
+        }
+        res = await self.client.account_balance(data)
+        self.assertEqual(res, "500000000")
 
     async def test_account_transaction(self):
         pagination = AccountTxPaginationWithOrder(count=99, start=0, ascending=True)
@@ -190,7 +200,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         self.faucet_client = RestClient(self.faucet_url, self.client_config)
 
         # Make faucet trnsaction(Will make a test account)
-        self.faucet_client = RestClient(self.faucet_url, self.client_config)
+        self.faucet_client = FaucetClient(self.faucet_url, self.client)
         await self.faucet_client.faucet(
             address=AccountAddress(bytes.fromhex(self.test_signer_address))
         )
@@ -572,7 +582,7 @@ class TablesTest(unittest.IsolatedAsyncioTestCase):
         self.client = RestClient(self.base_url, self.client_config)
 
         # Make faucet trnsaction(Will make a test account)
-        self.faucet_client = RestClient(self.faucet_url, self.client_config)
+        self.faucet_client = FaucetClient(self.faucet_url, self.client)
         await self.faucet_client.faucet(
             address=AccountAddress(bytes.fromhex(self.test_address))
         )
@@ -585,7 +595,7 @@ class TablesTest(unittest.IsolatedAsyncioTestCase):
         )
 
         with self.assertRaises(Exception) as cm:
-            res = await self.client.table_items_by_key(
+            _res = await self.client.table_items_by_key(
                 table_handle=AccountAddress(bytes.fromhex(self.test_address)),
                 table_item_request=tir,
             )
@@ -646,7 +656,9 @@ class FaucetTest(unittest.IsolatedAsyncioTestCase):
             max_gas_amount=100_000,
         )
 
-        self.client = RestClient(self.base_url, self.client_config)
+        self.client = FaucetClient(
+            self.base_url, RestClient(self.base_url, self.client_config)
+        )
 
     async def test_faucet(self):
         res = await self.client.faucet(
