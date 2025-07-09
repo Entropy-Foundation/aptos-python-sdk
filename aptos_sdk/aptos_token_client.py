@@ -423,7 +423,7 @@ class AptosTokenClient:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             creator, payload
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     @staticmethod
     def mint_token_payload(
@@ -475,7 +475,7 @@ class AptosTokenClient:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             creator, payload
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     async def mint_soul_bound_token(
         self,
@@ -521,7 +521,8 @@ class AptosTokenClient:
     async def transfer_token(
         self, owner: Account, token: AccountAddress, to: AccountAddress
     ) -> str:
-        return await self.client.transfer_object(owner, token, to)  # <:!:transfer_token
+        # <:!:transfer_token
+        return await self.client.transfer_object(owner, token, to)
 
     async def burn_token(self, creator: Account, token: AccountAddress) -> str:
         payload = EntryFunction.natural(
@@ -578,7 +579,7 @@ class AptosTokenClient:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     async def remove_token_property(
         self, creator: Account, token: AccountAddress, name: str
@@ -598,7 +599,7 @@ class AptosTokenClient:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     async def update_token_property(
         self, creator: Account, token: AccountAddress, prop: Property
@@ -616,14 +617,14 @@ class AptosTokenClient:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     async def tokens_minted_from_transaction(
         self, txn_hash: str
     ) -> List[AccountAddress]:
         output = await self.client.transaction_by_hash(txn_hash)
         mints = []
-        for event in output["events"]:
+        for event in output["output"]["Move"]["events"]:
             if event["type"] not in (
                 "0x4::collection::MintEvent",
                 "0x4::collection::Mint",

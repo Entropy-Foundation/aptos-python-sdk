@@ -17,8 +17,8 @@ from .async_client import FaucetClient, RestClient
 
 # Assume that the binary is in the global path if one is not provided.
 DEFAULT_BINARY = os.getenv("APTOS_CLI_PATH", "aptos")
-LOCAL_FAUCET = "http://127.0.0.1:8081"
-LOCAL_NODE = "http://127.0.0.1:8080/v1"
+LOCAL_FAUCET = "http://127.0.0.1:27001"
+LOCAL_NODE = "http://127.0.0.1:27000"
 
 # Assume that the node failed to start if it has been more than this time since the process started
 MAXIMUM_WAIT_TIME_SEC = 30
@@ -29,7 +29,7 @@ class AptosCLIWrapper:
 
     @staticmethod
     def prepare_named_addresses(
-        named_addresses: Dict[str, AccountAddress]
+        named_addresses: Dict[str, AccountAddress],
     ) -> List[str]:
         total_names = len(named_addresses)
         args: List[str] = []
@@ -104,7 +104,9 @@ class CLIError(Exception):
 
     def __init__(self, command, output, error):
         super().__init__(
-            f"The CLI operation failed:\n\tCommand: {' '.join(command)}\n\tOutput: {output}\n\tError: {error}"
+            f"The CLI operation failed:\n\tCommand: {' '.join(command)}\n\tOutput: {
+                output
+            }\n\tError: {error}"
         )
 
 
