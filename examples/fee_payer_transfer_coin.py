@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import time
 
 from aptos_sdk.account import Account
+from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.async_client import FaucetClient, RestClient
 from aptos_sdk.authenticator import Authenticator, FeePayerAuthenticator
 from aptos_sdk.bcs import Serializer
@@ -11,9 +13,11 @@ from aptos_sdk.transactions import (
     EntryFunction,
     FeePayerRawTransaction,
     SignedTransaction,
+    SupraTransaction,
     TransactionArgument,
     TransactionPayload,
 )
+from aptos_sdk.type_tag import StructTag, TypeTag
 
 from .common import FAUCET_URL, NODE_URL
 
@@ -34,13 +38,30 @@ async def main():
     print(f"Sponsor: {sponsor.address()}")
 
     # :!:>section_3
-    await faucet_client.fund_account(sponsor.address(), 100_000_000)  # <:!:section_3
+    # Default: 500_000_000
+    await faucet_client.faucet(sponsor.address())
+    await faucet_client.faucet(alice.address())
+    await faucet_client.faucet(bob.address())
+    time.sleep(5)
 
     print("\n=== Initial Data ===")
     # :!:>section_4
     alice_sequence_number = await rest_client.account_sequence_number(alice.address())
-    bob_balance = await rest_client.account_balance(bob.address())
-    sponsor_balance = await rest_client.account_balance(sponsor.address())
+
+    sponsor_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{sponsor.address().__str__()}"],
+    }
+
+    bob_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{bob.address().__str__()}"],
+    }
+
+    bob_balance = await rest_client.account_balance(bob_data)
+    sponsor_balance = await rest_client.account_balance(sponsor_data)
     print(f"Alice sequence number: {alice_sequence_number}")
     print(f"Bob balance: {bob_balance}")
     print(f"Sponsor balance: {sponsor_balance}")  # <:!:section_4
@@ -49,14 +70,20 @@ async def main():
     # :!:>section_5
     transaction_arguments = [
         TransactionArgument(bob.address(), Serializer.struct),
+        TransactionArgument(1_000, Serializer.u64),  # Amount to transfer
     ]
 
+    supra_coin_type = TypeTag(
+        StructTag(AccountAddress.from_str("0x1"), "supra_coin", "SupraCoin", [])
+    )
+
     payload = EntryFunction.natural(
-        "0x1::aptos_account",
-        "create_account",
-        [],
+        "0x1::coin",
+        "transfer",
+        [supra_coin_type],
         transaction_arguments,
     )
+
     raw_transaction = await rest_client.create_bcs_transaction(
         alice, TransactionPayload(payload), alice_sequence_number
     )
@@ -72,16 +99,19 @@ async def main():
     signed_transaction = SignedTransaction(
         raw_transaction, Authenticator(fee_payer_authenticator)
     )
-    txn_hash = await rest_client.submit_bcs_transaction(
-        signed_transaction
-    )  # <:!:section_5
+
+    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
+    supra_serializer = Serializer()
+    supra_txn.serialize(supra_serializer)
+
+    txn_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
     # :!:>section_6
     await rest_client.wait_for_transaction(txn_hash)  # <:!:section_6
 
     print("\n=== Final Data ===")
     alice_sequence_number = rest_client.account_sequence_number(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    sponsor_balance = rest_client.account_balance(sponsor.address())
+    bob_balance = rest_client.account_balance(bob_data)
+    sponsor_balance = rest_client.account_balance(sponsor_data)
     [alice_sequence_number, bob_balance, sponsor_balance] = await asyncio.gather(
         *[alice_sequence_number, bob_balance, sponsor_balance]
     )
