@@ -3,6 +3,7 @@
 
 import asyncio
 import json
+import time
 
 from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
@@ -75,13 +76,27 @@ async def main():
     print(f"Bob: {bob.address()}")
 
     # :!:>section_3
-    bob_fund = faucet_client.fund_account(alice.address(), 100_000_000)
-    alice_fund = faucet_client.fund_account(bob.address(), 100_000_000)  # <:!:section_3
+    bob_fund = faucet_client.faucet(alice.address())
+    alice_fund = faucet_client.faucet(bob.address())  # <:!:section_3
     await asyncio.gather(*[bob_fund, alice_fund])
+    time.sleep(5)
 
     print("\n=== Initial Coin Balances ===")
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
+
+    alice_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{alice.address().__str__()}"],
+    }
+
+    bob_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{bob.address().__str__()}"],
+    }
+
+    alice_balance = rest_client.account_balance(alice_data)
+    bob_balance = rest_client.account_balance(bob_data)
     [alice_balance, bob_balance] = await asyncio.gather(*[alice_balance, bob_balance])
     print(f"Alice: {alice_balance}")
     print(f"Bob: {bob_balance}")
@@ -161,7 +176,8 @@ async def main():
     # Read the object owner
     # :!:>section_9
     obj_resources = await token_client.read_object(token_addr)
-    print(f"Token owner: {owners[str(get_owner(obj_resources))]}")  # <:!:section_9
+    # <:!:section_9
+    print(f"Token owner: {owners[str(get_owner(obj_resources))]}")
 
     # Transfer the token back to Alice
     # :!:>section_10
@@ -176,7 +192,8 @@ async def main():
     # Read the object owner one last time
     # :!:>section_11
     obj_resources = await token_client.read_object(token_addr)
-    print(f"Token owner: {owners[str(get_owner(obj_resources))]}\n")  # <:!:section_11
+    # <:!:section_11
+    print(f"Token owner: {owners[str(get_owner(obj_resources))]}\n")
 
     await rest_client.close()
 
