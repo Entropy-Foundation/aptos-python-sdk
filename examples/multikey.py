@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import time
 
 from aptos_sdk import asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
 from aptos_sdk.account import Account
@@ -13,9 +14,11 @@ from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
     EntryFunction,
     SignedTransaction,
+    SupraTransaction,
     TransactionArgument,
     TransactionPayload,
 )
+from aptos_sdk.type_tag import StructTag, TypeTag
 
 from .common import FAUCET_URL, INDEXER_URL, NODE_URL
 
@@ -49,14 +52,27 @@ async def main():
     print(f"Bob: {bob.address()}")
 
     # :!:>section_3
-    alice_fund = faucet_client.fund_account(alice_address, 100_000_000)
-    bob_fund = faucet_client.fund_account(bob.address(), 0)  # <:!:section_3
+    alice_fund = faucet_client.faucet(alice_address)  # Default: 500_000_000
+    bob_fund = faucet_client.faucet(bob.address())  # Default: 500_000_000
     await asyncio.gather(*[alice_fund, bob_fund])
+    time.sleep(5)
 
     print("\n=== Initial Balances ===")
     # :!:>section_4
-    alice_balance = rest_client.account_balance(alice_address)
-    bob_balance = rest_client.account_balance(bob.address())
+    alice_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{alice_address.__str__()}"],
+    }
+
+    bob_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{bob.address().__str__()}"],
+    }
+
+    alice_balance = rest_client.account_balance(alice_data)
+    bob_balance = rest_client.account_balance(bob_data)
     [alice_balance, bob_balance] = await asyncio.gather(*[alice_balance, bob_balance])
     print(f"Alice: {alice_balance}")
     print(f"Bob: {bob_balance}")  # <:!:section_4
@@ -69,15 +85,31 @@ async def main():
     # Build Transaction to sign
     transaction_arguments = [
         TransactionArgument(bob.address(), Serializer.struct),
-        TransactionArgument(1_000, Serializer.u64),
+        TransactionArgument(1_000, Serializer.u64),  # Amount to transfer
     ]
 
+    supra_coin_type = TypeTag(
+        StructTag(AccountAddress.from_str("0x1"), "supra_coin", "SupraCoin", [])
+    )
+
     payload = EntryFunction.natural(
-        "0x1::aptos_account",
+        "0x1::coin",
         "transfer",
-        [],
+        [supra_coin_type],
         transaction_arguments,
     )
+
+    # transaction_arguments = [
+    #     TransactionArgument(bob.address(), Serializer.struct),
+    #     TransactionArgument(1_000, Serializer.u64),
+    # ]
+    #
+    # payload = EntryFunction.natural(
+    #     "0x1::aptos_account",
+    #     "transfer",
+    #     [],
+    #     transaction_arguments,
+    # )
 
     raw_transaction = await rest_client.create_bcs_transaction(
         alice_address, TransactionPayload(payload)
@@ -100,14 +132,18 @@ async def main():
 
     # Submit to network
     signed_txn = SignedTransaction(raw_transaction, alice_auth)
-    txn_hash = await rest_client.submit_bcs_transaction(signed_txn)
+    supra_txn = SupraTransaction.create_move_transaction(signed_txn)
+    supra_serializer = Serializer()
+    supra_txn.serialize(supra_serializer)
+
+    txn_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
 
     # :!:>section_6
     await rest_client.wait_for_transaction(txn_hash)  # <:!:section_6
 
     print("\n=== Final Balances ===")
-    alice_balance = rest_client.account_balance(alice_address)
-    bob_balance = rest_client.account_balance(bob.address())
+    alice_balance = rest_client.account_balance(alice_data)
+    bob_balance = rest_client.account_balance(bob_data)
     [alice_balance, bob_balance] = await asyncio.gather(*[alice_balance, bob_balance])
     print(f"Alice: {alice_balance}")
     print(f"Bob: {bob_balance}")  # <:!:section_4
