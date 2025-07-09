@@ -17,6 +17,7 @@ from aptos_sdk.transactions import (
     Script,
     ScriptArgument,
     SignedTransaction,
+    SupraTransaction,
     TransactionArgument,
     TransactionPayload,
 )
@@ -79,21 +80,40 @@ async def main(should_wait_input=True):
 
     # :!:>section_3
     print("\n=== Funding accounts ===")
-    alice_start = 10_000_000
-    bob_start = 20_000_000
-    chad_start = 30_000_000
-    multisig_start = 40_000_000
-
-    alice_fund = faucet_client.fund_account(alice.address(), alice_start)
-    bob_fund = faucet_client.fund_account(bob.address(), bob_start)
-    chad_fund = faucet_client.fund_account(chad.address(), chad_start)
-    multisig_fund = faucet_client.fund_account(multisig_address, multisig_start)
+    alice_fund = faucet_client.faucet(alice.address())
+    bob_fund = faucet_client.faucet(bob.address())
+    chad_fund = faucet_client.faucet(chad.address())
+    multisig_fund = faucet_client.faucet(multisig_address)
+    time.sleep(5)
     await asyncio.gather(*[alice_fund, bob_fund, chad_fund, multisig_fund])
+    alice_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{alice.address().__str__()}"],
+    }
 
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    chad_balance = rest_client.account_balance(chad.address())
-    multisig_balance = rest_client.account_balance(multisig_address)
+    bob_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{bob.address().__str__()}"],
+    }
+
+    chad_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{chad.address().__str__()}"],
+    }
+
+    multisig_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{multisig_address.__str__()}"],
+    }
+
+    alice_balance = rest_client.account_balance(alice_data)
+    bob_balance = rest_client.account_balance(bob_data)
+    chad_balance = rest_client.account_balance(chad_data)
+    multisig_balance = rest_client.account_balance(multisig_data)
     [alice_balance, bob_balance, chad_balance, multisig_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, chad_balance, multisig_balance]
     )
@@ -109,7 +129,7 @@ async def main(should_wait_input=True):
     entry_function = EntryFunction.natural(
         module="0x1::coin",
         function="transfer",
-        ty_args=[TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
+        ty_args=[TypeTag(StructTag.from_str("0x1::supra_coin::SupraCoin"))],
         args=[
             TransactionArgument(chad.address(), Serializer.struct),
             TransactionArgument(100, Serializer.u64),
@@ -153,9 +173,13 @@ async def main(should_wait_input=True):
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
 
+    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
+    supra_serializer = Serializer()
+    supra_txn.serialize(supra_serializer)
+
     print("\n=== Submitting transfer transaction ===")
 
-    tx_hash = await rest_client.submit_bcs_transaction(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
     await rest_client.wait_for_transaction(tx_hash)
     print(f"Transaction hash: {tx_hash}")  # <:!:section_5
 
@@ -164,10 +188,10 @@ async def main(should_wait_input=True):
     # :!:>section_6
     print("\n=== New account balances===")
 
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    chad_balance = rest_client.account_balance(chad.address())
-    multisig_balance = rest_client.account_balance(multisig_address)
+    alice_balance = rest_client.account_balance(alice_data)
+    bob_balance = rest_client.account_balance(bob_data)
+    chad_balance = rest_client.account_balance(chad_data)
+    multisig_balance = rest_client.account_balance(multisig_data)
     [alice_balance, bob_balance, chad_balance, multisig_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, chad_balance, multisig_balance]
     )
@@ -190,10 +214,15 @@ async def main(should_wait_input=True):
     print(f"Deedee's address:    {deedee.address()}")
     print(f"Deedee's public key: {deedee.public_key()}")
 
-    deedee_start = 50_000_000
+    # deedee_start = 50_000_000
+    deedee_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{deedee.address().__str__()}"],
+    }
 
-    await faucet_client.fund_account(deedee.address(), deedee_start)
-    deedee_balance = await rest_client.account_balance(deedee.address())
+    await faucet_client.faucet(deedee.address())
+    deedee_balance = await rest_client.account_balance(deedee_data)
     print(f"Deedee's balance:    {deedee_balance}")  # <:!:section_7
 
     wait()
@@ -222,7 +251,8 @@ async def main(should_wait_input=True):
     )
 
     print(f"cap_rotate_key:   0x{cap_rotate_key.data().hex()}")
-    print(f"cap_update_table: 0x{cap_update_table.to_bytes().hex()}")  # <:!:section_8
+    # <:!:section_8
+    print(f"cap_update_table: 0x{cap_update_table.to_bytes().hex()}")
 
     wait()
 
@@ -250,7 +280,7 @@ async def main(should_wait_input=True):
     account_data = await rest_client.account(deedee.address())
     print(f"Auth key pre-rotation: {account_data['authentication_key']}")
 
-    tx_hash = await rest_client.submit_bcs_transaction(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)
     print(f"Transaction hash:      {tx_hash}")
 
@@ -321,7 +351,7 @@ async def main(should_wait_input=True):
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
 
-    tx_hash = await rest_client.submit_bcs_transaction(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)
     print(f"\nTransaction hash: {tx_hash}")
 
@@ -400,7 +430,7 @@ async def main(should_wait_input=True):
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
 
-    tx_hash = await rest_client.submit_bcs_transaction(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)
     print(f"\nTransaction hash: {tx_hash}")
 
@@ -454,14 +484,14 @@ async def main(should_wait_input=True):
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
 
-    tx_hash = await rest_client.submit_bcs_transaction(signed_transaction)
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)
     print(f"Transaction hash: {tx_hash}")
 
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    chad_balance = rest_client.account_balance(chad.address())
-    multisig_balance = rest_client.account_balance(multisig_address)
+    alice_balance = rest_client.account_balance(alice_data)
+    bob_balance = rest_client.account_balance(bob_data)
+    chad_balance = rest_client.account_balance(chad_data)
+    multisig_balance = rest_client.account_balance(multisig_data)
     [alice_balance, bob_balance, chad_balance, multisig_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, chad_balance, multisig_balance]
     )
