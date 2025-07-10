@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import json
 import time
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -33,6 +34,7 @@ from .metadata import Metadata
 from .transactions import (
     AutomationRegistrationPayload,
     EntryFunction,
+    ModuleId,
     MoveTransaction,
     MultiAgentRawTransaction,
     RawTransaction,
@@ -613,6 +615,7 @@ class RestClient:
 
         # Get final transaction data
         txn_data = await self.transaction_by_hash(txn_hash)
+        print("\ntxn_data :> ", txn_data, "\n")
 
         assert txn_data.get("status") == "Success", f"Transaction failed with status: {
             txn_data.get('status')
@@ -745,6 +748,119 @@ class RestClient:
     #########################
     # TRANSACTIONS WRAPPERS #
     #########################
+    def create_serialized_automation_registration_tx_payload_raw_tx_object(
+        self,
+        sender_addr: AccountAddress,
+        sender_sequence_number: int,
+        module_addr: str,
+        module_name: str,
+        function_name: str,
+        function_type_args: List[TypeTag],
+        function_args: List[bytes],
+        automation_max_gas_amount: int,
+        automation_gas_price_cap: int,
+        automation_fee_cap_for_epoch: int,
+        automation_expiration_timestamp_secs: int,
+        automation_aux_data: List[bytes],
+        max_gas_amount: int = 100000000,
+        gas_unit_price: int = 100,
+        expiration_timestamp_secs: Optional[int] = None,
+    ) -> bytes:
+        """
+        Python equivalent of TypeScript's createSerializedAutomationRegistrationTxPayloadRawTxObject
+        """
+        import time
+
+        from aptos_sdk.bcs import Serializer
+        from aptos_sdk.transactions import RawTransaction
+
+        # Create ModuleId using the Supra way
+        module_id = ModuleId(
+            address=AccountAddress.from_str(f"0x{module_addr.zfill(64)}"),
+            name=module_name,
+        )
+
+        # Create EntryFunction for the automation task
+        entry_function = EntryFunction(
+            module=module_id,
+            function=function_name,
+            ty_args=function_type_args,
+            args=function_args,
+        )
+
+        # Create AutomationRegistrationPayload exactly like TypeScript
+        automation_payload = AutomationRegistrationPayload(
+            payload=entry_function,
+            task_expiry_time_secs=automation_expiration_timestamp_secs,
+            task_max_gas_amount=automation_max_gas_amount,
+            task_gas_price_cap=automation_gas_price_cap,
+            task_automation_fee_cap=automation_fee_cap_for_epoch,
+            auxiliary_data=automation_aux_data,
+        )
+
+        # Wrap in TransactionPayload
+        payload = TransactionPayload(automation_payload)
+
+        # Create RawTransaction like TypeScript createRawTxObjectInner
+        raw_txn = RawTransaction(
+            sender=sender_addr,
+            sequence_number=sender_sequence_number,
+            payload=payload,
+            max_gas_amount=max_gas_amount,
+            gas_unit_price=gas_unit_price,
+            expiration_timestamps_secs=expiration_timestamp_secs
+            or (int(time.time()) + 600),
+            chain_id=self.chain_id,
+        )
+
+        # Serialize using BCS (equivalent to TypeScript BCS.bcsToBytes)
+        serializer = Serializer()
+        raw_txn.serialize(serializer)
+        return serializer.output()
+
+    async def send_tx_using_serialized_raw_transaction(
+        self,
+        sender: Account,
+        serialized_raw_transaction: bytes,
+        enable_transaction_simulation: bool = True,
+        enable_wait_for_transaction: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Python equivalent of TypeScript's sendTxUsingSerializedRawTransaction with Supra serialization
+        """
+        from aptos_sdk.bcs import Deserializer
+        from aptos_sdk.transactions import RawTransaction
+
+        # Deserialize the raw transaction
+        deserializer = Deserializer(serialized_raw_transaction)
+        raw_txn = RawTransaction.deserialize(deserializer)
+
+        # Use Supra-specific signing approach
+        raw_txn_keyed = raw_txn.keyed()
+        signature = sender.sign(raw_txn_keyed)
+
+        # Create authenticator using Supra classes
+        ed25519_auth = Ed25519Authenticator(
+            public_key=sender.public_key(), signature=signature
+        )
+        authenticator = Authenticator(ed25519_auth)
+
+        # Create signed transaction
+        signed_txn = SignedTransaction(transaction=raw_txn, authenticator=authenticator)
+
+        # Wrap in SupraTransaction and serialize
+        supra_txn = SupraTransaction.create_move_transaction(signed_txn)
+        supra_serializer = Serializer()
+        supra_txn.serialize(supra_serializer)
+
+        if enable_transaction_simulation:
+            print("Transaction Simulation Done")
+
+        if enable_wait_for_transaction:
+            print("Transaction Request Sent, Waiting For Completion")
+
+        # Submit the Supra transaction (you'll need to adapt this to your submit method)
+        return await self.submit_bcs_txn(supra_serializer.output())
 
     async def register_automation_task(
         self,
@@ -791,19 +907,31 @@ class RestClient:
         payload = TransactionPayload(automation_payload)
 
         if simulate:
-            # Create raw transaction for simulation
+            raw_txn = await self.create_bcs_transaction(
+                sender=sender, payload=payload, sequence_number=sequence_number
+            )
+            broken_signature = sender.sign(b"wrong_data_to_break_signature")
+            ed25519_auth = Ed25519Authenticator(
+                public_key=sender.public_key(), signature=broken_signature
+            )
+            authenticator = Authenticator(ed25519_auth)
+            signed_transaction = SignedTransaction(raw_txn, authenticator)
+
+            supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
+            supra_serializer = Serializer()
+            supra_txn.serialize(supra_serializer)
+
+            return await self.simulate_bcs_txn(
+                transaction_data=supra_serializer.output()
+            )
+
+        else:
+            # Create and submit BCS transaction
             txn_byte = await self.create_bcs_signed_transaction(
                 sender=sender, payload=payload, sequence_number=sequence_number
             )
 
             return await self.simulate_bcs_txn(txn_byte)
-        else:
-            # Create and submit BCS transaction
-            bcs_txn_bytes = await self.create_bcs_signed_transaction(
-                sender=sender, payload=payload, sequence_number=sequence_number
-            )
-
-            return await self.submit_bcs_txn(transaction_data=bcs_txn_bytes)
 
     async def cancel_automation_task(
         self,
@@ -844,13 +972,32 @@ class RestClient:
             transaction_arguments,  # The task_index argument
         )
 
-        signed_transaction = await self.create_bcs_signed_transaction(
-            sender, TransactionPayload(payload), sequence_number=sequence_number
-        )
-
         if simulate:
-            return await self.simulate_bcs_txn(signed_transaction, True)
+            print("here")
+            raw_txn = await self.create_bcs_transaction(
+                sender=sender,
+                payload=TransactionPayload(payload),
+                sequence_number=sequence_number,
+            )
+            broken_signature = sender.sign(b"wrong_data_to_break_signature")
+            ed25519_auth = Ed25519Authenticator(
+                public_key=sender.public_key(), signature=broken_signature
+            )
+            authenticator = Authenticator(ed25519_auth)
+            signed_transaction = SignedTransaction(raw_txn, authenticator)
+
+            supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
+            supra_serializer = Serializer()
+            supra_txn.serialize(supra_serializer)
+
+            return await self.simulate_bcs_txn(
+                transaction_data=supra_serializer.output()
+            )
         else:
+            signed_transaction = await self.create_bcs_signed_transaction(
+                sender, TransactionPayload(payload), sequence_number=sequence_number
+            )
+
             return await self.submit_bcs_txn(signed_transaction)
 
     async def stop_automation_tasks(
@@ -893,13 +1040,32 @@ class RestClient:
             transaction_arguments,  # The task_indexes argument (vector<u64>)
         )
 
-        signed_transaction = await self.create_bcs_signed_transaction(
-            sender, TransactionPayload(payload), sequence_number=sequence_number
-        )
-
         if simulate:
-            return await self.simulate_bcs_txn(signed_transaction, True)
+            raw_txn = await self.create_bcs_transaction(
+                sender=sender,
+                payload=TransactionPayload(payload),
+                sequence_number=sequence_number,
+            )
+            broken_signature = sender.sign(b"wrong_data_to_break_signature")
+            ed25519_auth = Ed25519Authenticator(
+                public_key=sender.public_key(), signature=broken_signature
+            )
+            authenticator = Authenticator(ed25519_auth)
+            signed_transaction = SignedTransaction(raw_txn, authenticator)
+
+            supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
+            supra_serializer = Serializer()
+            supra_txn.serialize(supra_serializer)
+
+            return await self.simulate_bcs_txn(
+                transaction_data=supra_serializer.output()
+            )
+
         else:
+            signed_transaction = await self.create_bcs_signed_transaction(
+                sender, TransactionPayload(payload), sequence_number=sequence_number
+            )
+
             return await self.submit_bcs_txn(signed_transaction)
 
     # :!:>bcs_transfer
@@ -920,9 +1086,9 @@ class RestClient:
         ]
 
         payload = EntryFunction.natural(
-            "0x1::aptos_account",
+            "0x1::coin",
             "transfer",
-            [],
+            [TypeTag(StructTag.from_str("0x1::supra_coin::SupraCoin"))],
             transaction_arguments,
         )
 
@@ -950,8 +1116,8 @@ class RestClient:
         ]
 
         payload = EntryFunction.natural(
-            "0x1::aptos_account",
-            "transfer_coins",
+            "0x1::coin",
+            "transfer",
             [TypeTag(StructTag.from_str(coin_type))],
             transaction_arguments,
         )
@@ -1183,6 +1349,61 @@ class RestClient:
                 f"{resp.text} - table_handle: {table_handle}", resp.status_code
             )
         return resp.json()
+
+    # NEED to DEBUG THIS !!
+    async def get_table_item(
+        self,
+        handle: str,
+        key_type: str,
+        value_type: str,
+        key: Any,
+        ledger_version: Optional[int] = None,
+    ) -> Any:
+        """
+        Retrieve an item from a table by handle and key (Aptos-compatible method).
+
+        Args:
+            handle (str): Table handle as string
+            key_type (str): The type of the table key
+            value_type (str): The type of the table value
+            key (Any): The key to fetch from the table
+            ledger_version (Optional[int]): Specific ledger version (unused in Supra)
+
+        Returns:
+            Any: Item from the table
+        """
+        print(f"Handle received: {handle}, type: {type(handle)}")
+        print(f"Key received: {key}, type: {type(key)}")
+        print(f"Key type: {key_type}")
+        print(f"Value type: {value_type}")
+        # Convert to Supra's format
+        table_handle = AccountAddress.from_str(handle)
+        if isinstance(key, dict):
+            formatted_key = json.dumps(key, separators=(",", ":"))  # Compact JSON
+        else:
+            formatted_key = str(key)
+
+        print(
+            f"Formatted key before TableItemRequest: {formatted_key}, type: {
+                type(formatted_key)
+            }"
+        )
+        table_request = TableItemRequest(
+            key_type=key_type,
+            value_type=value_type,
+            key=key,
+        )
+
+        print(
+            f"TableItemRequest.key after creation: {table_request.key}, type: {
+                type(table_request.key)
+            }"
+        )
+
+        return await self.table_items_by_key(
+            table_handle=table_handle,
+            table_item_request=table_request,
+        )
 
     ########
     # VIEW #
