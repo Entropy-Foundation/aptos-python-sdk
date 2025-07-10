@@ -12,7 +12,6 @@ from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
     EntryFunction,
     SignedTransaction,
-    SupraTransaction,
     TransactionArgument,
     TransactionPayload,
 )
@@ -57,12 +56,8 @@ async def main():
     authenticator = Authenticator(ed25519_auth)
     signed_transaction = SignedTransaction(transaction, authenticator)
 
-    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
-    supra_serializer = Serializer()
-    supra_txn.serialize(supra_serializer)
-
     print("\n=== Simulate before creating Bob's Account ===")
-    output = await rest_client.simulate_bcs_txn(supra_serializer.output())
+    output = await rest_client.simulate_bcs_txn(signed_transaction)
 
     vm_status = output["output"]["Move"]["vm_status"]
     assert "Move abort" in vm_status, f"Expected CoinStore error, got: {vm_status}"
@@ -83,11 +78,7 @@ async def main():
     authenticator2 = Authenticator(ed25519_auth2)
     signed_transaction2 = SignedTransaction(transaction2, authenticator2)
 
-    supra_txn2 = SupraTransaction.create_move_transaction(signed_transaction2)
-    supra_serializer2 = Serializer()
-    supra_txn2.serialize(supra_serializer2)
-
-    output2 = await rest_client.simulate_bcs_txn(supra_serializer2.output())
+    output2 = await rest_client.simulate_bcs_txn(signed_transaction2)
     vm_status2 = output2["output"]["Move"]["vm_status"]
     assert vm_status2 == "Executed successfully", f"Expected success, got: {vm_status2}"
     print(json.dumps(output2, indent=4, sort_keys=True))

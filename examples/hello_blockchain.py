@@ -16,6 +16,7 @@ One method to do so is to use the CLI:
 import asyncio
 import os
 import sys
+import time
 from typing import Any, Dict, Optional
 
 from aptos_sdk.account import Account
@@ -39,9 +40,13 @@ class HelloBlockchainClient(RestClient):
     ) -> Optional[Dict[str, Any]]:
         """Retrieve the resource message::MessageHolder::message"""
         try:
-            return await self.account_resource(
-                account_address, f"{contract_address}::message::MessageHolder"
+            resource_struct_tag = f"{contract_address}::message::MessageHolder"
+            path_param = (
+                account_address,
+                resource_struct_tag,
             )
+
+            return await self.account_specific_resource(path_param=path_param)
         except ResourceNotFound:
             return None
 
@@ -59,14 +64,16 @@ class HelloBlockchainClient(RestClient):
         signed_transaction = await self.create_bcs_signed_transaction(
             sender, TransactionPayload(payload)
         )
-        return await self.submit_bcs_transaction(signed_transaction)
+        return await self.submit_bcs_txn(signed_transaction)
 
 
 async def publish_contract(package_dir: str) -> AccountAddress:
     contract_publisher = Account.generate()
     rest_client = HelloBlockchainClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
-    await faucet_client.fund_account(contract_publisher.address(), 10_000_000)
+    # Default: 500_000_000
+    await faucet_client.faucet(contract_publisher.address())
+    time.sleep(5)
 
     AptosCLIWrapper.compile_package(
         package_dir, {"hello_blockchain": contract_publisher.address()}
@@ -106,12 +113,25 @@ async def main(contract_address: AccountAddress):
     rest_client = HelloBlockchainClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
 
-    alice_fund = faucet_client.fund_account(alice.address(), 10_000_000)
-    bob_fund = faucet_client.fund_account(bob.address(), 10_000_000)
+    alice_fund = faucet_client.faucet(alice.address())  # Default: 500_000_000
+    bob_fund = faucet_client.faucet(bob.address())  # Default: 500_000_000
     await asyncio.gather(*[alice_fund, bob_fund])
+    time.sleep(5)
 
-    a_alice_balance = rest_client.account_balance(alice.address())
-    a_bob_balance = rest_client.account_balance(bob.address())
+    alice_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{alice.address().__str__()}"],
+    }
+
+    bob_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{bob.address().__str__()}"],
+    }
+
+    a_alice_balance = rest_client.account_balance(alice_data)
+    a_bob_balance = rest_client.account_balance(bob_data)
     [alice_balance, bob_balance] = await asyncio.gather(
         *[a_alice_balance, a_bob_balance]
     )

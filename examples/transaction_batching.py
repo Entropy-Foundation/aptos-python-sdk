@@ -23,6 +23,7 @@ from aptos_sdk.transactions import (
     TransactionArgument,
     TransactionPayload,
 )
+from aptos_sdk.type_tag import StructTag, TypeTag
 
 from .common import FAUCET_URL, NODE_URL
 
@@ -163,7 +164,9 @@ class Worker:
             while num_txns != 0:
                 if num_txns % 100 == 0:
                     logging.info(
-                        f"{self._txn_worker.address()} remaining transactions {num_txns}"
+                        f"{self._txn_worker.address()} remaining transactions {
+                            num_txns
+                        }"
                     )
                 num_txns -= 1
                 (
@@ -173,7 +176,9 @@ class Worker:
                 ) = await self._txn_worker.next_processed_transaction()
                 if exception:
                     logging.error(
-                        f"Account {self._txn_worker.address()}, transaction {sequence_number} submission failed.",
+                        f"Account {self._txn_worker.address()}, transaction {
+                            sequence_number
+                        } submission failed.",
                         exc_info=exception,
                     )
                 else:
@@ -209,9 +214,9 @@ async def transfer_transaction(
         TransactionArgument(amount, Serializer.u64),
     ]
     payload = EntryFunction.natural(
-        "0x1::aptos_account",
+        "0x1::coin",
         "transfer",
-        [],
+        [TypeTag(StructTag.from_str("0x1::supra_coin::SupraCoin"))],
         transaction_arguments,
     )
 
@@ -342,7 +347,7 @@ async def distribute(
         txn = await transfer_transaction(
             rest_client, source, sequence_number, account, amount
         )
-        txns.append(rest_client.submit_bcs_transaction(txn))
+        txns.append(rest_client.submit_bcs_txn(txn))
 
     txn_hashes.extend(await asyncio.gather(*txns))
     for txn_hash in txn_hashes:

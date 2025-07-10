@@ -14,7 +14,6 @@ from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
     EntryFunction,
     SignedTransaction,
-    SupraTransaction,
     TransactionArgument,
     TransactionPayload,
 )
@@ -132,11 +131,8 @@ async def main():
 
     # Submit to network
     signed_txn = SignedTransaction(raw_transaction, alice_auth)
-    supra_txn = SupraTransaction.create_move_transaction(signed_txn)
-    supra_serializer = Serializer()
-    supra_txn.serialize(supra_serializer)
 
-    txn_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
+    txn_hash = await rest_client.submit_bcs_txn(signed_txn)
 
     # :!:>section_6
     await rest_client.wait_for_transaction(txn_hash)  # <:!:section_6

@@ -44,7 +44,7 @@ class CoinClient(RestClient):
         signed_transaction = await self.create_bcs_signed_transaction(
             sender, TransactionPayload(payload)
         )
-        return await self.submit_bcs_transaction(signed_transaction)
+        return await self.submit_bcs_txn(signed_transaction)
 
     async def mint_coin(
         self, minter: Account, receiver_address: AccountAddress, amount: int
@@ -63,7 +63,7 @@ class CoinClient(RestClient):
         signed_transaction = await self.create_bcs_signed_transaction(
             minter, TransactionPayload(payload)
         )
-        return await self.submit_bcs_transaction(signed_transaction)
+        return await self.submit_bcs_txn(signed_transaction)
 
     async def get_balance(
         self,
@@ -71,11 +71,16 @@ class CoinClient(RestClient):
         account_address: AccountAddress,
     ) -> str:
         """Returns the coin balance of the given account"""
-
-        balance = await self.account_resource(
-            account_address,
+        resource_struct_tag = (
             f"0x1::coin::CoinStore<{coin_address}::moon_coin::MoonCoin>",
         )
+
+        path_param = (
+            account_address,
+            resource_struct_tag,
+        )
+
+        balance = await self.account_specific_resource(path_param=path_param)
         return balance["data"]["coin"]["value"]
 
 
@@ -146,8 +151,8 @@ async def main(moon_coin_path: str):
 
 
 if __name__ == "__main__":
-    assert (
-        len(sys.argv) == 2
-    ), "Expecting an argument that points to the moon_coin directory."
+    assert len(sys.argv) == 2, (
+        "Expecting an argument that points to the moon_coin directory."
+    )
 
     asyncio.run(main(sys.argv[1]))

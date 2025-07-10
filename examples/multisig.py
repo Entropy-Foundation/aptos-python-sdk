@@ -17,7 +17,6 @@ from aptos_sdk.transactions import (
     Script,
     ScriptArgument,
     SignedTransaction,
-    SupraTransaction,
     TransactionArgument,
     TransactionPayload,
 )
@@ -173,13 +172,9 @@ async def main(should_wait_input=True):
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
 
-    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
-    supra_serializer = Serializer()
-    supra_txn.serialize(supra_serializer)
-
     print("\n=== Submitting transfer transaction ===")
 
-    tx_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)
     print(f"Transaction hash: {tx_hash}")  # <:!:section_5
 
@@ -350,17 +345,19 @@ async def main(should_wait_input=True):
     )
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
-    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
-    supra_serializer = Serializer()
-    supra_txn.serialize(supra_serializer)
 
-    tx_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)
     print(f"\nTransaction hash: {tx_hash}")
 
-    registry = await rest_client.account_resource(
-        deedee.address(), "0x1::code::PackageRegistry"
+    resource_struct_tag = "0x1::code::PackageRegistry"
+
+    path_param = (
+        deedee.address(),
+        resource_struct_tag,
     )
+
+    registry = await self._client.account_specific_resource(path_param=path_param)
 
     package_name = registry["data"]["packages"][0]["name"]
     n_upgrades = registry["data"]["packages"][0]["upgrade_number"]
@@ -432,17 +429,19 @@ async def main(should_wait_input=True):
     )
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
-    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
-    supra_serializer = Serializer()
-    supra_txn.serialize(supra_serializer)
 
-    tx_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)
     print(f"\nTransaction hash: {tx_hash}")
 
-    registry = await rest_client.account_resource(
-        deedee.address(), "0x1::code::PackageRegistry"
+    resource_struct_tag = "0x1::code::PackageRegistry"
+
+    path_param = (
+        deedee.address(),
+        resource_struct_tag,
     )
+
+    registry = await self._client.account_specific_resource(path_param=path_param)
 
     n_upgrades = registry["data"]["packages"][0]["upgrade_number"]
 
@@ -489,11 +488,8 @@ async def main(should_wait_input=True):
     )
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
-    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
-    supra_serializer = Serializer()
-    supra_txn.serialize(supra_serializer)
 
-    tx_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
+    tx_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(tx_hash)
     print(f"Transaction hash: {tx_hash}")
 

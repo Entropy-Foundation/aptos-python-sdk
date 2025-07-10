@@ -7,11 +7,9 @@ import time
 
 from aptos_sdk.account import Account
 from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
     Script,
     ScriptArgument,
-    SupraTransaction,
     TransactionPayload,
 )
 
@@ -95,11 +93,7 @@ async def main():
     signed_transaction = await rest_client.create_multi_agent_bcs_transaction(
         alice, [bob], payload
     )
-    supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
-    supra_serializer = Serializer()
-    supra_txn.serialize(supra_serializer)
-
-    txn_hash = await rest_client.submit_bcs_txn(supra_serializer.output())
+    txn_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(txn_hash)
 
     alice_balance = rest_client.account_balance(alice_data)

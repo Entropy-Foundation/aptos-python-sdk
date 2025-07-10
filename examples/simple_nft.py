@@ -3,6 +3,7 @@
 
 import asyncio
 import json
+import time
 
 from aptos_sdk.account import Account
 from aptos_sdk.aptos_tokenv1_client import AptosTokenV1Client
@@ -29,13 +30,26 @@ async def main():
     print(f"Bob: {bob.address()}")
 
     # :!:>section_3
-    bob_fund = faucet_client.fund_account(alice.address(), 100_000_000)
-    alice_fund = faucet_client.fund_account(bob.address(), 100_000_000)  # <:!:section_3
+    bob_fund = faucet_client.faucet(alice.address())
+    alice_fund = faucet_client.faucet(bob.address())  # <:!:section_3
     await asyncio.gather(*[bob_fund, alice_fund])
+    time.sleep(5)
 
     print("\n=== Initial Coin Balances ===")
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
+    alice_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{alice.address().__str__()}"],
+    }
+
+    bob_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{bob.address().__str__()}"],
+    }
+
+    alice_balance = rest_client.account_balance(alice_data)
+    bob_balance = rest_client.account_balance(bob_data)
     [alice_balance, bob_balance] = await asyncio.gather(*[alice_balance, bob_balance])
     print(f"Alice: {alice_balance}")
     print(f"Bob: {bob_balance}")

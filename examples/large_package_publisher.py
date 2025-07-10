@@ -8,6 +8,7 @@ One method to do so is to use the CLI:
     * Open another terminal and `aptos move compile --package-dir ~/aptos-core/aptos-move/move-examples/moon_coin --save-metadata --named-addresses MoonCoin=<Alice address from above step>`.
     * Return to the first terminal and press enter.
 """
+
 import asyncio
 import os
 import sys
@@ -27,7 +28,7 @@ async def publish_large_packages(large_packages_dir) -> AccountAddress:
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
 
     alice = Account.generate()
-    await faucet_client.fund_account(alice.address(), 1_000_000_000)
+    await faucet_client.faucet(alice.address())  # Default: 500_000_000
     await aptos_sdk_cli.publish_package(
         large_packages_dir, {"large_packages": alice.address()}, alice, NODE_URL
     )
@@ -45,11 +46,17 @@ async def main(
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
 
     alice = Account.generate()
-    req0 = faucet_client.fund_account(alice.address(), 1_000_000_000)
-    req1 = faucet_client.fund_account(alice.address(), 1_000_000_000)
-    req2 = faucet_client.fund_account(alice.address(), 1_000_000_000)
+    req0 = faucet_client.faucet(alice.address())
+    req1 = faucet_client.faucet(alice.address())
+    req2 = faucet_client.faucet(alice.address())
     await asyncio.gather(*[req0, req1, req2])
-    alice_balance = await rest_client.account_balance(alice.address())
+    alice_data = {
+        "function": "0x1::coin::balance",
+        "type_arguments": ["0x1::supra_coin::SupraCoin"],
+        "arguments": [f"{alice.address().__str__()}"],
+    }
+    alice_balance = await rest_client.account_balance(alice_data)
+
     print(f"Alice: {alice.address()} {alice_balance}")
 
     if AptosCLIWrapper.does_cli_exist():
