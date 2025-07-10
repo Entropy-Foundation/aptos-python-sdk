@@ -41,7 +41,7 @@ class TableItemRequest:
 
     key_type: Optional[str] = None
     value_type: Optional[str] = None
-    key: Optional[str] = None
+    key: Optional[Any] = None
 
     def to_params(self) -> Dict[str, Any]:
         """

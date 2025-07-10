@@ -562,9 +562,18 @@ class RestClient:
             raise ApiError(f"{resp.text} - {txn_data}", resp.status_code)
         return resp.json()
 
-    async def simulate_bcs_txn(self, transaction_data: bytes) -> Dict[str, Any]:
+    async def simulate_bcs_txn(
+        self, transaction_data: SignedTransaction | bytes
+    ) -> Dict[str, Any]:
         headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
         endpoint = "rpc/v3/transactions/simulate"
+
+        if isinstance(transaction_data, SignedTransaction):
+            supra_txn = SupraTransaction.create_move_transaction(transaction_data)
+            supra_serializer = Serializer()
+            supra_txn.serialize(supra_serializer)
+            transaction_data = supra_serializer.output()
+
         resp = await self._post(
             endpoint=endpoint, data=transaction_data, headers=headers
         )
