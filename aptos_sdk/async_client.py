@@ -32,7 +32,8 @@ from .authenticator import (
 from .bcs import Serializer
 from .metadata import Metadata
 from .transactions import (
-    AutomationRegistrationPayload,
+    AutomationRegistrationParamsV1,
+    AutomationRegistrationParamsV1Data,
     EntryFunction,
     ModuleId,
     MoveTransaction,
@@ -42,6 +43,7 @@ from .transactions import (
     SupraTransaction,
     TransactionArgument,
     TransactionPayload,
+    TransactionPayloadAutomationRegistration,
 )
 from .type_tag import StructTag, TypeTag
 
@@ -574,6 +576,12 @@ class RestClient:
         endpoint = "rpc/v3/transactions/submit"
         headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
 
+        if isinstance(transaction_data, SignedTransaction):
+            supra_txn = SupraTransaction.create_move_transaction(transaction_data)
+            supra_serializer = Serializer()
+            supra_txn.serialize(supra_serializer)
+            transaction_data = supra_serializer.output()
+
         resp = await self._post(
             endpoint=endpoint, data=transaction_data, headers=headers
         )
@@ -748,9 +756,10 @@ class RestClient:
     #########################
     # TRANSACTIONS WRAPPERS #
     #########################
-    def create_serialized_automation_registration_tx_payload_raw_tx_object(
+    def create_automation_registration_tx_payload_raw_tx_object(
         self,
         sender_addr: AccountAddress,
+        chain_id: int,
         sender_sequence_number: int,
         module_addr: str,
         module_name: str,
@@ -765,22 +774,15 @@ class RestClient:
         max_gas_amount: int = 100000000,
         gas_unit_price: int = 100,
         expiration_timestamp_secs: Optional[int] = None,
-    ) -> bytes:
+    ) -> RawTransaction:
         """
         Python equivalent of TypeScript's createSerializedAutomationRegistrationTxPayloadRawTxObject
         """
-        import time
-
-        from aptos_sdk.bcs import Serializer
-        from aptos_sdk.transactions import RawTransaction
-
-        # Create ModuleId using the Supra way
         module_id = ModuleId(
             address=AccountAddress.from_str(f"0x{module_addr.zfill(64)}"),
             name=module_name,
         )
 
-        # Create EntryFunction for the automation task
         entry_function = EntryFunction(
             module=module_id,
             function=function_name,
@@ -788,21 +790,22 @@ class RestClient:
             args=function_args,
         )
 
-        # Create AutomationRegistrationPayload exactly like TypeScript
-        automation_payload = AutomationRegistrationPayload(
-            payload=entry_function,
-            task_expiry_time_secs=automation_expiration_timestamp_secs,
-            task_max_gas_amount=automation_max_gas_amount,
-            task_gas_price_cap=automation_gas_price_cap,
-            task_automation_fee_cap=automation_fee_cap_for_epoch,
-            auxiliary_data=automation_aux_data,
+        v1_data = AutomationRegistrationParamsV1Data(
+            automated_function=entry_function,
+            max_gas_amount=automation_max_gas_amount,
+            gas_price_cap=automation_gas_price_cap,
+            automation_fee_cap_for_epoch=automation_fee_cap_for_epoch,
+            expiration_timestamp_secs=automation_expiration_timestamp_secs,
+            aux_data=automation_aux_data,
         )
 
-        # Wrap in TransactionPayload
+        v1_params = AutomationRegistrationParamsV1(v1_data)
+
+        automation_payload = TransactionPayloadAutomationRegistration(v1_params)
+
         payload = TransactionPayload(automation_payload)
 
-        # Create RawTransaction like TypeScript createRawTxObjectInner
-        raw_txn = RawTransaction(
+        return RawTransaction(
             sender=sender_addr,
             sequence_number=sender_sequence_number,
             payload=payload,
@@ -810,128 +813,42 @@ class RestClient:
             gas_unit_price=gas_unit_price,
             expiration_timestamps_secs=expiration_timestamp_secs
             or (int(time.time()) + 600),
-            chain_id=self.chain_id,
+            chain_id=chain_id,
         )
 
-        # Serialize using BCS (equivalent to TypeScript BCS.bcsToBytes)
-        serializer = Serializer()
-        raw_txn.serialize(serializer)
-        return serializer.output()
-
-    async def send_tx_using_serialized_raw_transaction(
+    async def send_automation_tx_using_raw_transaction(
         self,
         sender: Account,
-        serialized_raw_transaction: bytes,
+        raw_transaction: RawTransaction,
         enable_transaction_simulation: bool = True,
         enable_wait_for_transaction: bool = True,
     ) -> Dict[str, Any]:
         """
-        Python equivalent of TypeScript's sendTxUsingSerializedRawTransaction with Supra serialization
+        Python equivalent of TypeScript's sendTxUsingSerializedRawTransaction with Supra serialization.
         """
-        from aptos_sdk.bcs import Deserializer
-        from aptos_sdk.transactions import RawTransaction
+        # Prepare the raw transaction and signature
+        signature = sender.sign(raw_transaction.keyed())
 
-        # Deserialize the raw transaction
-        deserializer = Deserializer(serialized_raw_transaction)
-        raw_txn = RawTransaction.deserialize(deserializer)
+        if enable_transaction_simulation:
+            # Intentionally break the signature for simulation
+            signature = sender.sign(b"wrong_data_to_break_signature")
+            print("Transaction Simulation Done")
 
-        # Use Supra-specific signing approach
-        raw_txn_keyed = raw_txn.keyed()
-        signature = sender.sign(raw_txn_keyed)
-
-        # Create authenticator using Supra classes
         ed25519_auth = Ed25519Authenticator(
             public_key=sender.public_key(), signature=signature
         )
         authenticator = Authenticator(ed25519_auth)
-
-        # Create signed transaction
-        signed_txn = SignedTransaction(transaction=raw_txn, authenticator=authenticator)
-
-        # Wrap in SupraTransaction and serialize
-        supra_txn = SupraTransaction.create_move_transaction(signed_txn)
-        supra_serializer = Serializer()
-        supra_txn.serialize(supra_serializer)
-
-        if enable_transaction_simulation:
-            print("Transaction Simulation Done")
+        signed_txn = SignedTransaction(
+            transaction=raw_transaction, authenticator=authenticator
+        )
 
         if enable_wait_for_transaction:
             print("Transaction Request Sent, Waiting For Completion")
 
-        # Submit the Supra transaction (you'll need to adapt this to your submit method)
-        return await self.submit_bcs_txn(supra_serializer.output())
+        if enable_transaction_simulation:
+            return await self.simulate_bcs_txn(signed_txn)
 
-    async def register_automation_task(
-        self,
-        sender: Account,
-        task_payload: EntryFunction,
-        task_max_gas_amount: int,
-        task_gas_price_cap: int,
-        task_expiry_time_secs: int,
-        task_automation_fee_cap: int,
-        simulate: bool = False,
-        sequence_number: Optional[int] = None,
-    ) -> Union[Dict[str, Any], str]:
-        """
-        Registers a new automation task with the automation registry.
-
-        This method mirrors the Rust implementation that creates AutomationRegistration
-        with RegistrationParams.
-
-        Args:
-            sender (Account): The account that will sign and send the transaction
-            task_payload (EntryFunction): The entry function to be executed automatically
-            task_max_gas_amount (int): Maximum gas amount to be paid when registered task is executed
-            task_gas_price_cap (int): Maximum gas price user is willing to pay for the task
-            task_expiry_time_secs (int): Task expire time in seconds since EPOCH
-            task_automation_fee_cap (int): The maximum automation fee per epoch user is willing to pay
-            simulate (bool): Whether to simulate the transaction instead of executing it
-            sequence_number (Optional[int]): Optional sequence number override
-
-        Returns:
-            str: Transaction hash if executed, or simulation result if simulated
-
-        Raises:
-            ApiError: If the API request fails
-        """
-        automation_payload = AutomationRegistrationPayload(
-            task_payload,
-            task_expiry_time_secs,
-            task_max_gas_amount,
-            task_gas_price_cap,
-            task_automation_fee_cap,
-            [],
-        )
-
-        payload = TransactionPayload(automation_payload)
-
-        if simulate:
-            raw_txn = await self.create_bcs_transaction(
-                sender=sender, payload=payload, sequence_number=sequence_number
-            )
-            broken_signature = sender.sign(b"wrong_data_to_break_signature")
-            ed25519_auth = Ed25519Authenticator(
-                public_key=sender.public_key(), signature=broken_signature
-            )
-            authenticator = Authenticator(ed25519_auth)
-            signed_transaction = SignedTransaction(raw_txn, authenticator)
-
-            supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
-            supra_serializer = Serializer()
-            supra_txn.serialize(supra_serializer)
-
-            return await self.simulate_bcs_txn(
-                transaction_data=supra_serializer.output()
-            )
-
-        else:
-            # Create and submit BCS transaction
-            txn_byte = await self.create_bcs_signed_transaction(
-                sender=sender, payload=payload, sequence_number=sequence_number
-            )
-
-            return await self.simulate_bcs_txn(txn_byte)
+        return await self.submit_bcs_txn(signed_txn)
 
     async def cancel_automation_task(
         self,
@@ -973,7 +890,6 @@ class RestClient:
         )
 
         if simulate:
-            print("here")
             raw_txn = await self.create_bcs_transaction(
                 sender=sender,
                 payload=TransactionPayload(payload),
