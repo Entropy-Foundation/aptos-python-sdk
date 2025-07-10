@@ -80,9 +80,7 @@ class TransactionWorker:
                 transaction = await self._transaction_generator(
                     self._account, sequence_number
                 )
-                txn_hash_awaitable = self._rest_client.submit_bcs_transaction(
-                    transaction
-                )
+                txn_hash_awaitable = self._rest_client.submit_bcs_txn(transaction)
                 await self._outstanding_transactions.put(
                     (txn_hash_awaitable, sequence_number)
                 )
@@ -197,7 +195,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         )
         seq_num_patcher.start()
         submit_txn_patcher = unittest.mock.patch(
-            "aptos_sdk.async_client.RestClient.submit_bcs_transaction",
+            "aptos_sdk.async_client.RestClient.submit_bcs_txn",
             return_value="0xff",
         )
         submit_txn_patcher.start()
@@ -216,7 +214,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         submit_txn_patcher.stop()
         exception = Exception("Power overwhelming")
         submit_txn_patcher = unittest.mock.patch(
-            "aptos_sdk.async_client.RestClient.submit_bcs_transaction",
+            "aptos_sdk.async_client.RestClient.submit_bcs_txn",
             side_effect=exception,
         )
         submit_txn_patcher.start()

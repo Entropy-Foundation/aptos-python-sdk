@@ -45,7 +45,7 @@ class AptosTokenV1Client:
         signed_transaction = await self._client.create_bcs_signed_transaction(
             account, TransactionPayload(payload)
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self._client.submit_bcs_txn(signed_transaction)
 
     async def create_token(
         self,
@@ -88,7 +88,7 @@ class AptosTokenV1Client:
         signed_transaction = await self._client.create_bcs_signed_transaction(
             account, TransactionPayload(payload)
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self._client.submit_bcs_txn(signed_transaction)
 
     async def offer_token(
         self,
@@ -118,7 +118,7 @@ class AptosTokenV1Client:
         signed_transaction = await self._client.create_bcs_signed_transaction(
             account, TransactionPayload(payload)
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self._client.submit_bcs_txn(signed_transaction)
 
     async def claim_token(
         self,
@@ -146,7 +146,7 @@ class AptosTokenV1Client:
         signed_transaction = await self._client.create_bcs_signed_transaction(
             account, TransactionPayload(payload)
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self._client.submit_bcs_txn(signed_transaction)
 
     async def direct_transfer_token(
         self,
@@ -178,7 +178,7 @@ class AptosTokenV1Client:
             [receiver],
             TransactionPayload(payload),
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self._client.submit_bcs_txn(signed_transaction)
 
     #
     # Token accessors
@@ -192,7 +192,14 @@ class AptosTokenV1Client:
         token_name: str,
         property_version: int,
     ) -> Any:
-        resource = await self._client.account_resource(owner, "0x3::token::TokenStore")
+        resource_struct_tag = "0x3::token::TokenStore"
+
+        path_param = (
+            owner,
+            resource_struct_tag,
+        )
+
+        resource = await self._client.account_specific_resource(path_param=path_param)
         token_store_handle = resource["data"]["tokens"]["handle"]
 
         token_id = {
@@ -239,9 +246,14 @@ class AptosTokenV1Client:
         token_name: str,
         property_version: int,
     ) -> Any:
-        resource = await self._client.account_resource(
-            creator, "0x3::token::Collections"
+        resource_struct_tag = "0x3::token::Collections"
+
+        path_param = (
+            creator,
+            resource_struct_tag,
         )
+
+        resource = await self._client.account_specific_resource(path_param=path_param)
         token_data_handle = resource["data"]["token_data"]["handle"]
 
         token_data_id = {
@@ -260,9 +272,15 @@ class AptosTokenV1Client:
     async def get_collection(
         self, creator: AccountAddress, collection_name: str
     ) -> Any:
-        resource = await self._client.account_resource(
-            creator, "0x3::token::Collections"
+        resource_struct_tag = "0x3::token::Collections"
+
+        path_param = (
+            creator,
+            resource_struct_tag,
         )
+
+        resource = await self._client.account_specific_resource(path_param=path_param)
+
         token_data = resource["data"]["collection_data"]["handle"]
 
         return await self._client.get_table_item(
@@ -291,4 +309,4 @@ class AptosTokenV1Client:
             owner,
             TransactionPayload(payload),
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self._client.submit_bcs_txn(signed_transaction)

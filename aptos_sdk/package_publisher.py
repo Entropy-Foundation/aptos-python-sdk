@@ -49,7 +49,7 @@ class PackagePublisher:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             sender, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     async def publish_package_in_path(
         self,
@@ -161,7 +161,7 @@ class PackagePublisher:
             signed_txn = await self.client.create_bcs_signed_transaction(
                 sender, payload
             )
-            txn_hash = await self.client.submit_bcs_transaction(signed_txn)
+            txn_hash = await self.client.submit_bcs_txn(signed_txn)
             await self.client.wait_for_transaction(txn_hash)
             txn_hashes.append(txn_hash)
         return txn_hashes

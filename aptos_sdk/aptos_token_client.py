@@ -515,7 +515,7 @@ class AptosTokenClient:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     # :!:>transfer_token
     async def transfer_token(
@@ -535,7 +535,7 @@ class AptosTokenClient:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     async def freeze_token(self, creator: Account, token: AccountAddress) -> str:
         payload = EntryFunction.natural(
@@ -548,7 +548,7 @@ class AptosTokenClient:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     async def unfreeze_token(self, creator: Account, token: AccountAddress) -> str:
         payload = EntryFunction.natural(
@@ -561,7 +561,7 @@ class AptosTokenClient:
         signed_transaction = await self.client.create_bcs_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_bcs_txn(signed_transaction)
 
     async def add_token_property(
         self, creator: Account, token: AccountAddress, prop: Property
