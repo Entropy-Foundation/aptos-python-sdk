@@ -109,7 +109,7 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
             "arguments": [f"{self.test_account.account_address.__str__()}"],
         }
         res = await self.client.account_balance(data)
-        self.assertEqual(res, "500000000")
+        self.assertEqual(res, 500000000)
 
     async def test_account_transaction(self):
         pagination = AccountTxPaginationWithOrder(count=99, start=0, ascending=True)
@@ -170,6 +170,10 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
         """
         pass
 
+    async def asyncTearDown(self):
+        await self.client.close()
+        await self.faucet_client.close()
+
 
 class TransactionTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -178,11 +182,9 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         self.faucet_url = "http://localhost:27001"
 
         self.test_account = Account.generate()
-        # self.test_bad_account = Account.generate()
         self.test_signer_account = Account.generate()
         self.test_authenticator_account = Account.generate()
         self.test_account_address = self.test_account.account_address.__str__()[2:]
-        # self.test_bad_address = self.test_account.account_address.__str__()[2:]
         self.test_signer_address = self.test_signer_account.account_address.__str__()[
             2:
         ]
@@ -210,6 +212,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         await self.faucet_client.faucet(
             address=AccountAddress(bytes.fromhex(self.test_account_address))
         )
+        await self.faucet_client.faucet(address=self.test_account.account_address)
 
         await asyncio.sleep(5)
 
@@ -330,6 +333,9 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
 
     async def test_create_bcs_signed_transaction(self):
+        fresh_account = Account.generate()
+        await self.faucet_client.faucet(address=fresh_account.account_address)
+        await asyncio.sleep(2)
         payload = TransactionPayload(
             EntryFunction(
                 module=ModuleId(
@@ -343,7 +349,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         )
 
         bcs_txn_bytes = await self.client.create_bcs_signed_transaction(
-            sender=self.test_account, payload=payload
+            sender=fresh_account, payload=payload
         )
 
         self.assertIsInstance(bcs_txn_bytes, bytes)
@@ -368,8 +374,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         )
         hash = await self.client.submit_txn(transaction_data=move_txn)
 
-        time.sleep(5)  # Must be replaced by wait_for_transaction function
-        # await self.client.wait_for_transaction(hash)
+        time.sleep(5)
         res = await self.client.transaction_by_hash(hash)
         self.assertEqual(
             res["hash"], hash, "FAIL: Hash of cannot change after submission"
@@ -487,6 +492,10 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         supra_txn.serialize(supra_serializer)
         return supra_serializer.output()
 
+    async def asyncTearDown(self):
+        await self.client.close()
+        await self.faucet_client.close()
+
 
 class BlockTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -555,12 +564,8 @@ class BlockTest(unittest.IsolatedAsyncioTestCase):
             res = await self.client.txs_by_block(block_hash=wrong_hash)
         self.assertIn(wrong_hash, str(cm.exception))
 
-    # async def test_latest_consensus_block(self):
-    #     res = await self.client.latest_consensus_block()
-    #     self.assertIsInstance(res, dict, "FAIL: Wrong data-type returned")
-    #     self.assertGreater(
-    #         len(res["header"]["hash"]), 0, "FAIL: Block hash cannot be empty"
-    #     )
+    async def asyncTearDown(self):
+        await self.client.close()
 
 
 class TablesTest(unittest.IsolatedAsyncioTestCase):
@@ -601,6 +606,10 @@ class TablesTest(unittest.IsolatedAsyncioTestCase):
             )
         self.assertIn(self.test_address.lower(), str(cm.exception))
 
+    async def asyncTearDown(self):
+        await self.client.close()
+        await self.faucet_client.close()
+
 
 class ViewTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -624,6 +633,9 @@ class ViewTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(res, dict, "FAIL: Wrong data-type returned")
         self.assertGreater(len(res["result"][0]), 0, "FAIL: timestamp cannot be 0")
 
+    async def asyncTearDown(self):
+        await self.client.close()
+
 
 class EventsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -641,6 +653,9 @@ class EventsTest(unittest.IsolatedAsyncioTestCase):
         res = await self.client.events_by_type(event_type=event_type)
         self.assertIsInstance(res, dict, "FAIL: Wrong data-type returned")
         self.assertGreater(len(res["data"]), 0, "FAIL: timestamp cannot be 0")
+
+    async def asyncTearDown(self):
+        await self.client.close()
 
 
 class FaucetTest(unittest.IsolatedAsyncioTestCase):
@@ -676,3 +691,6 @@ class FaucetTest(unittest.IsolatedAsyncioTestCase):
         res = await self.client.faucet_transaction_by_hash(hash=hash)
         self.assertIsInstance(res, dict, "FAIL: wrong result data-type")
         self.assertEqual(res["hash"], hash, "FAIL: Hash must be present")
+
+    async def asyncTearDown(self):
+        await self.client.close()

@@ -227,3 +227,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
             print(f"✗ Stop tasks simulation failed: {e}")
 
         print("\n=== All tests completed ===")
+
+    async def asyncTearDown(self):
+        await self.client.close()
+        await self.faucet.close()

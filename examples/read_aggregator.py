@@ -13,7 +13,7 @@ async def main():
     rest_client = RestClient(NODE_URL)
     total_apt = await rest_client.aggregator_value(
         AccountAddress.from_str("0x1"),
-        "0x1::coin::CoinInfo<0x1::aptos_coin::AptosCoin>",
+        "0x1::coin::CoinInfo<0x1::supra_coin::SupraCoin>",
         ["supply"],
     )
     print(f"Total circulating APT: {total_apt}")
