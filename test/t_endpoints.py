@@ -2,23 +2,23 @@ import asyncio
 import time
 import unittest
 
-from aptos_sdk.account import Account
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.api_types import (
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.api_types import (
     AccountAutomatedTxPagination,
     AccountCoinTxPaginationWithOrder,
     AccountPublishedListPagination,
     AccountTxPaginationWithOrder,
     TableItemRequest,
 )
-from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
-from aptos_sdk.authenticator import (
+from supra_sdk.async_client import ClientConfig, FaucetClient, RestClient
+from supra_sdk.authenticator import (
     AccountAuthenticator,
     Authenticator,
     Ed25519Authenticator,
 )
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.transactions import (
+from supra_sdk.bcs import Serializer
+from supra_sdk.transactions import (
     EntryFunction,
     ModuleId,
     MoveTransaction,

@@ -2,10 +2,10 @@
 import asyncio
 import time
 
-from aptos_sdk.account import Account
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.aptos_token_client import AptosTokenClient, Object, Property, PropertyMap
-from aptos_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.supra_token_client import Object, Property, PropertyMap, SupraTokenClient
 
 from .common import FAUCET_URL, NODE_URL
 
@@ -13,7 +13,7 @@ from .common import FAUCET_URL, NODE_URL
 async def main():
     rest_client = RestClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
-    token_client = AptosTokenClient(rest_client)
+    token_client = SupraTokenClient(rest_client)
     alice = Account.generate()
     bob = Account.generate()
 
@@ -55,7 +55,7 @@ async def main():
         "Alice's simple collection",
         1,
         collection_name,
-        "https://aptos.dev",
+        "https://supra.com",
         True,
         True,
         True,
@@ -85,7 +85,7 @@ async def main():
         collection_name,
         "Alice's simple token",
         token_name,
-        "https://aptos.dev/img/nyan.jpeg",
+        "https://supra.dev/img/nyan.jpeg",
         PropertyMap([Property.string("string", "string value")]),
     )
     await rest_client.wait_for_transaction(txn_hash)

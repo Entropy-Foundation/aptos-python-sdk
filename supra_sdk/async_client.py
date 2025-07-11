@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
@@ -73,7 +73,7 @@ class ClientConfig:
 
 
 class IndexerClient:
-    """A wrapper around the Aptos Indexer Service on Hasura"""
+    """A wrapper around the Supra Indexer Service on Hasura"""
 
     client: python_graphql_client.GraphqlClient
 
@@ -109,7 +109,7 @@ class IndexerClient:
 
 
 class RestClient:
-    """A wrapper around the Aptos-core Rest API"""
+    """A wrapper around the Supra-core Rest API"""
 
     _chain_id: Optional[int]
     client: httpx.AsyncClient
@@ -132,7 +132,7 @@ class RestClient:
         # long as progress is being made.
         timeout = httpx.Timeout(60.0, pool=None)
         # Default headers
-        headers = {Metadata.APTOS_HEADER: Metadata.get_aptos_header_val()}
+        headers = {Metadata.SUPRA_HEADER: Metadata.get_supra_header_val()}
         self.client = httpx.AsyncClient(
             http2=client_config.http2,
             limits=limits,
@@ -1532,7 +1532,7 @@ class RestClient:
         ledger_version: Optional[int] = None,
     ) -> Any:
         """
-        Retrieve an item from a table by handle and key (Aptos-compatible method).
+        Retrieve an item from a table by handle and key (Supra-compatible method).
 
         Args:
             handle (str): Table handle as string

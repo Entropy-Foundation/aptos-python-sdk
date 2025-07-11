@@ -1,13 +1,13 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 """
 This example depends on the MoonCoin.move module having already been published to the destination blockchain.
 
 One method to do so is to use the CLI:
-    * Acquire the Aptos CLI, see https://aptos.dev/cli-tools/aptos-cli/use-cli/install-aptos-cli
-    * `python -m examples.your-coin ~/aptos-core/aptos-move/move-examples/moon_coin`.
-    * Open another terminal and `aptos move compile --package-dir ~/aptos-core/aptos-move/move-examples/moon_coin --save-metadata --named-addresses MoonCoin=<Alice address from above step>`.
+    * Acquire the Supra CLI, see https://supra.dev/cli-tools/supra-cli/use-cli/install-supra-cli
+    * `python -m examples.your-coin ~/supra-core/supra-move/move-examples/moon_coin`.
+    * Open another terminal and `supra move compile --package-dir ~/supra-core/supra-move/move-examples/moon_coin --save-metadata --named-addresses MoonCoin=<Alice address from above step>`.
     * Return to the first terminal and press enter.
 """
 
@@ -15,18 +15,18 @@ import asyncio
 import os
 import sys
 
-from aptos_sdk.account import Account
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
-from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.package_publisher import PackagePublisher
-from aptos_sdk.transactions import (
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.bcs import Serializer
+from supra_sdk.package_publisher import PackagePublisher
+from supra_sdk.supra_cli_wrapper import SupraCLIWrapper
+from supra_sdk.transactions import (
     EntryFunction,
     TransactionArgument,
     TransactionPayload,
 )
-from aptos_sdk.type_tag import StructTag, TypeTag
+from supra_sdk.type_tag import StructTag, TypeTag
 
 from .common import FAUCET_URL, NODE_URL
 
@@ -99,8 +99,8 @@ async def main(moon_coin_path: str):
     bob_fund = faucet_client.fund_account(bob.address(), 20_000_000)
     await asyncio.gather(*[alice_fund, bob_fund])
 
-    if AptosCLIWrapper.does_cli_exist():
-        AptosCLIWrapper.compile_package(moon_coin_path, {"MoonCoin": alice.address()})
+    if SupraCLIWrapper.does_cli_exist():
+        SupraCLIWrapper.compile_package(moon_coin_path, {"MoonCoin": alice.address()})
     else:
         input("\nUpdate the module with Alice's address, compile, and press enter.")
 

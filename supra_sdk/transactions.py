@@ -1,8 +1,8 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This translates Aptos transactions to and from BCS for signing and submitting to the REST API.
+This translates Supra transactions to and from BCS for signing and submitting to the REST API.
 """
 
 from __future__ import annotations
@@ -93,7 +93,7 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
     gas_unit_price: int
     # Expiration timestamp for this transaction, represented as seconds from the Unix epoch.
     expiration_timestamps_secs: int
-    # Chain ID of the Aptos network this transaction is intended for.
+    # Chain ID of the Supra network this transaction is intended for.
     chain_id: int
 
     def __init__(

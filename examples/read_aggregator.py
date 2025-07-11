@@ -1,10 +1,10 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.async_client import RestClient
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import RestClient
 
 from .common import NODE_URL
 

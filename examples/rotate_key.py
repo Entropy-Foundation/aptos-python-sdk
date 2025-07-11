@@ -2,14 +2,14 @@ import asyncio
 import time
 from typing import List, cast
 
-import aptos_sdk.asymmetric_crypto as asymmetric_crypto
-import aptos_sdk.ed25519 as ed25519
-from aptos_sdk.account import Account, RotationProofChallenge
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.authenticator import Authenticator
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.transactions import (
+import supra_sdk.asymmetric_crypto as asymmetric_crypto
+import supra_sdk.ed25519 as ed25519
+from supra_sdk.account import Account, RotationProofChallenge
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.authenticator import Authenticator
+from supra_sdk.bcs import Serializer
+from supra_sdk.transactions import (
     EntryFunction,
     TransactionArgument,
     TransactionPayload,

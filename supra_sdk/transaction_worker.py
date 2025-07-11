@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
@@ -7,12 +7,12 @@ import typing
 import unittest
 import unittest.mock
 
-from aptos_sdk.account import Account
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.account_sequence_number import AccountSequenceNumber
-from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.transactions import (
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.account_sequence_number import AccountSequenceNumber
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.bcs import Serializer
+from supra_sdk.transactions import (
     EntryFunction,
     SignedTransaction,
     TransactionArgument,
@@ -191,11 +191,11 @@ class Test(unittest.IsolatedAsyncioTestCase):
         )
 
         seq_num_patcher = unittest.mock.patch(
-            "aptos_sdk.async_client.RestClient.account_sequence_number", return_value=0
+            "supra_sdk.async_client.RestClient.account_sequence_number", return_value=0
         )
         seq_num_patcher.start()
         submit_txn_patcher = unittest.mock.patch(
-            "aptos_sdk.async_client.RestClient.submit_bcs_txn",
+            "supra_sdk.async_client.RestClient.submit_bcs_txn",
             return_value="0xff",
         )
         submit_txn_patcher.start()
@@ -232,7 +232,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         submit_txn_patcher.stop()
         exception = Exception("Power overwhelming")
         submit_txn_patcher = unittest.mock.patch(
-            "aptos_sdk.async_client.RestClient.submit_bcs_txn",
+            "supra_sdk.async_client.RestClient.submit_bcs_txn",
             side_effect=exception,
         )
         submit_txn_patcher.start()

@@ -1,16 +1,16 @@
 [tool.poetry]
-name = "aptos-sdk"
+name = "supra-sdk"
 version = "0.9.1"
-description = "Aptos SDK"
-authors = ["Aptos Labs <opensource@aptoslabs.com>"]
+description = "Supra SDK"
+authors = ["Supra Labs <opensource@supralabs.com>"]
 license = "Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/aptos-labs/aptos-core"
-homepage = "https://github.com/aptos-labs/aptos-core/tree/main/ecosystem/python/sdk"
-keywords = ["web3", "sdk", "aptos", "blockchain"]
+repository = "https://github.com/supra-labs/supra-core"
+homepage = "https://github.com/supra-labs/supra-core/tree/main/ecosystem/python/sdk"
+keywords = ["web3", "sdk", "supra", "blockchain"]
 
 [tool.setuptools.package-data]
-"aptos-sdk" = ["py.typed"]
+"supra-sdk" = ["py.typed"]
 
 [tool.poetry.dependencies]
 ecdsa = "0.18.0"

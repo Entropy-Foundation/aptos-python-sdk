@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -101,12 +101,12 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
     MIN_THRESHOLD = 1
 
     def __init__(self, keys: List[asymmetric_crypto.PublicKey], threshold: int):
-        assert (
-            self.MIN_KEYS <= len(keys) <= self.MAX_KEYS
-        ), f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys."
-        assert (
-            self.MIN_THRESHOLD <= threshold <= len(keys)
-        ), f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}."
+        assert self.MIN_KEYS <= len(keys) <= self.MAX_KEYS, (
+            f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys."
+        )
+        assert self.MIN_THRESHOLD <= threshold <= len(keys), (
+            f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}."
+        )
 
         # Ensure keys are wrapped
         self.keys = []
@@ -124,17 +124,17 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         try:
             total_sig = cast(MultiSignature, signature)
-            assert self.threshold <= len(
-                total_sig.signatures
-            ), f"Insufficient signatures, {self.threshold} > {len(total_sig.signatures)}"
+            assert self.threshold <= len(total_sig.signatures), (
+                f"Insufficient signatures, {self.threshold} > {len(total_sig.signatures)}"
+            )
 
             for idx, signature in total_sig.signatures:
-                assert (
-                    len(self.keys) > idx
-                ), f"Signature index exceeds available keys {len(self.keys)} < {idx}"
-                assert self.keys[idx].verify(
-                    data, signature
-                ), "Unable to verify signature"
+                assert len(self.keys) > idx, (
+                    f"Signature index exceeds available keys {len(self.keys)} < {idx}"
+                )
+                assert self.keys[idx].verify(data, signature), (
+                    "Unable to verify signature"
+                )
 
         except Exception:
             return False
@@ -170,9 +170,9 @@ class MultiSignature(asymmetric_crypto.Signature):
         # signatures.sort(key=lambda x: x[0])
         self.signatures = []
         for index, signature in signatures:
-            assert (
-                index < self.BITMAP_NUM_OF_BYTES * 8
-            ), "bitmap value exceeds maximum value"
+            assert index < self.BITMAP_NUM_OF_BYTES * 8, (
+                "bitmap value exceeds maximum value"
+            )
             if isinstance(signature, Signature):
                 self.signatures.append((index, signature))
             else:

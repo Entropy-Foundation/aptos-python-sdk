@@ -1,21 +1,21 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import json
 import time
 
-from aptos_sdk.account import Account
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.aptos_token_client import (
-    AptosTokenClient,
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.supra_token_client import (
     Collection,
     Object,
     PropertyMap,
     ReadObject,
+    SupraTokenClient,
     Token,
 )
-from aptos_sdk.async_client import FaucetClient, RestClient
 
 from .common import FAUCET_URL, NODE_URL
 
@@ -26,7 +26,7 @@ def get_owner(obj: ReadObject) -> AccountAddress:
 
 # :!:>section_6
 async def get_collection_data(
-    token_client: AptosTokenClient, collection_addr: AccountAddress
+    token_client: SupraTokenClient, collection_addr: AccountAddress
 ) -> dict[str, str]:
     collection = (await token_client.read_object(collection_addr)).resources[Collection]
     return {
@@ -39,7 +39,7 @@ async def get_collection_data(
 
 # :!:>get_token_data
 async def get_token_data(
-    token_client: AptosTokenClient, token_addr: AccountAddress
+    token_client: SupraTokenClient, token_addr: AccountAddress
 ) -> dict[str, str]:
     token = (await token_client.read_object(token_addr)).resources[Token]
     return {
@@ -59,7 +59,7 @@ async def main():
 
     # Create client for working with the token module.
     # :!:>section_1b
-    token_client = AptosTokenClient(rest_client)  # <:!:section_1b
+    token_client = SupraTokenClient(rest_client)  # <:!:section_2b
 
     # :!:>section_2
     alice = Account.generate()
@@ -109,7 +109,7 @@ async def main():
         "Alice's simple collection",
         1,
         collection_name,
-        "https://aptos.dev",
+        "https://supra.dev",
         True,
         True,
         True,
@@ -134,7 +134,7 @@ async def main():
         collection_name,
         "Alice's simple token",
         token_name,
-        "https://aptos.dev/img/nyan.jpeg",
+        "https://supra.dev/img/nyan.jpeg",
         PropertyMap([]),
     )  # <:!:section_5
     await rest_client.wait_for_transaction(txn_hash)

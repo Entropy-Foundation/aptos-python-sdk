@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from .account_address import AccountAddress
 from .async_client import FaucetClient, RestClient
 
 # Assume that the binary is in the global path if one is not provided.
-DEFAULT_BINARY = os.getenv("APTOS_CLI_PATH", "aptos")
+DEFAULT_BINARY = os.getenv("SUPRA_CLI_PATH", "supra")
 LOCAL_FAUCET = "http://127.0.0.1:27001"
 LOCAL_NODE = "http://127.0.0.1:27000"
 
@@ -24,8 +24,8 @@ LOCAL_NODE = "http://127.0.0.1:27000"
 MAXIMUM_WAIT_TIME_SEC = 30
 
 
-class AptosCLIWrapper:
-    """Tooling to make easy access to the Aptos CLI tool from within Python."""
+class SupraCLIWrapper:
+    """Tooling to make easy access to the Supra CLI tool from within Python."""
 
     @staticmethod
     def prepare_named_addresses(
@@ -46,7 +46,7 @@ class AptosCLIWrapper:
 
     @staticmethod
     def compile_package(package_dir: str, named_addresses: Dict[str, AccountAddress]):
-        AptosCLIWrapper.assert_cli_exists()
+        SupraCLIWrapper.assert_cli_exists()
         args = [
             DEFAULT_BINARY,
             "move",
@@ -55,20 +55,20 @@ class AptosCLIWrapper:
             "--package-dir",
             package_dir,
         ]
-        args.extend(AptosCLIWrapper.prepare_named_addresses(named_addresses))
+        args.extend(SupraCLIWrapper.prepare_named_addresses(named_addresses))
 
         process_output = subprocess.run(args, capture_output=True)
         if process_output.returncode != 0:
             raise CLIError(args, process_output.stdout, process_output.stderr)
 
     @staticmethod
-    def start_node() -> AptosInstance:
-        AptosCLIWrapper.assert_cli_exists()
-        return AptosInstance.start()
+    def start_node() -> SupraInstance:
+        SupraCLIWrapper.assert_cli_exists()
+        return SupraInstance.start()
 
     @staticmethod
     def test_package(package_dir: str, named_addresses: Dict[str, AccountAddress]):
-        AptosCLIWrapper.assert_cli_exists()
+        SupraCLIWrapper.assert_cli_exists()
         args = [
             DEFAULT_BINARY,
             "move",
@@ -76,7 +76,7 @@ class AptosCLIWrapper:
             "--package-dir",
             package_dir,
         ]
-        args.extend(AptosCLIWrapper.prepare_named_addresses(named_addresses))
+        args.extend(SupraCLIWrapper.prepare_named_addresses(named_addresses))
 
         process_output = subprocess.run(args, capture_output=True)
         if process_output.returncode != 0:
@@ -84,7 +84,7 @@ class AptosCLIWrapper:
 
     @staticmethod
     def assert_cli_exists():
-        if not AptosCLIWrapper.does_cli_exist():
+        if not SupraCLIWrapper.does_cli_exist():
             raise MissingCLIError()
 
     @staticmethod
@@ -110,12 +110,12 @@ class CLIError(Exception):
         )
 
 
-class AptosInstance:
+class SupraInstance:
     """
-    A standalone Aptos node running by itself. This still needs a bit of work:
+    A standalone Supra node running by itself. This still needs a bit of work:
     * a test instance should be loaded into its own port space. Currently they share ports as
       those are not configurable without a config file. As a result, it is possible that two
-      test runs may share a single AptosInstance and both successfully complete.
+      test runs may share a single SupraInstance and both successfully complete.
     * Probably need some means to monitor the process in case it stops, as we aren't actively
       monitoring this.
     """
@@ -157,7 +157,7 @@ class AptosInstance:
         out_thread.start()
 
     @staticmethod
-    def start() -> AptosInstance:
+    def start() -> SupraInstance:
         temp_dir = tempfile.TemporaryDirectory()
         args = [
             DEFAULT_BINARY,
@@ -172,7 +172,7 @@ class AptosInstance:
         node_runner = subprocess.Popen(
             args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
-        return AptosInstance(node_runner, temp_dir)
+        return SupraInstance(node_runner, temp_dir)
 
     def stop(self):
         self._node_runner.terminate()

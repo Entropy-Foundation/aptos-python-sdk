@@ -1,11 +1,11 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 """
 This example depends on the MoonCoin.move module having already been published to the destination blockchain.
 One method to do so is to use the CLI:
-    * Acquire the Aptos CLI, see https://aptos.dev/cli-tools/aptos-cli-tool/install-aptos-cli
-    * `python -m examples.your-coin ~/aptos-core/aptos-move/move-examples/moon_coin`.
-    * Open another terminal and `aptos move compile --package-dir ~/aptos-core/aptos-move/move-examples/moon_coin --save-metadata --named-addresses MoonCoin=<Alice address from above step>`.
+    * Acquire the Supra CLI, see https://supra.dev/cli-tools/supra-cli-tool/install-supra-cli
+    * `python -m examples.your-coin ~/supra-core/supra-move/move-examples/moon_coin`.
+    * Open another terminal and `supra move compile --package-dir ~/supra-core/supra-move/move-examples/moon_coin --save-metadata --named-addresses MoonCoin=<Alice address from above step>`.
     * Return to the first terminal and press enter.
 """
 
@@ -13,14 +13,14 @@ import asyncio
 import os
 import sys
 
-import aptos_sdk.cli as aptos_sdk_cli
-from aptos_sdk.account import Account
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
-from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
-from aptos_sdk.package_publisher import MODULE_ADDRESS, PackagePublisher
+import supra_sdk.cli as supra_sdk_cli
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import ClientConfig, FaucetClient, RestClient
+from supra_sdk.package_publisher import MODULE_ADDRESS, PackagePublisher
+from supra_sdk.supra_cli_wrapper import SupraCLIWrapper
 
-from .common import APTOS_CORE_PATH, FAUCET_URL, NODE_URL
+from .common import FAUCET_URL, NODE_URL, SUPRA_CORE_PATH
 
 
 async def publish_large_packages(large_packages_dir) -> AccountAddress:
@@ -29,7 +29,7 @@ async def publish_large_packages(large_packages_dir) -> AccountAddress:
 
     alice = Account.generate()
     await faucet_client.faucet(alice.address())  # Default: 500_000_000
-    await aptos_sdk_cli.publish_package(
+    await supra_sdk_cli.publish_package(
         large_packages_dir, {"large_packages": alice.address()}, alice, NODE_URL
     )
     return alice.address()
@@ -59,8 +59,8 @@ async def main(
 
     print(f"Alice: {alice.address()} {alice_balance}")
 
-    if AptosCLIWrapper.does_cli_exist():
-        AptosCLIWrapper.compile_package(
+    if SupraCLIWrapper.does_cli_exist():
+        SupraCLIWrapper.compile_package(
             large_package_example_dir, {"large_package_example": alice.address()}
         )
     else:
@@ -77,8 +77,8 @@ if __name__ == "__main__":
         large_package_example_dir = sys.argv[1]
     else:
         large_package_example_dir = os.path.join(
-            APTOS_CORE_PATH,
-            "aptos-move",
+            SUPRA_CORE_PATH,
+            "supra-move",
             "move-examples",
             "large_packages",
             "large_package_example",

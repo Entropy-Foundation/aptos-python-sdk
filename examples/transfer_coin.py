@@ -1,11 +1,11 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import time
 
-from aptos_sdk.account import Account
-from aptos_sdk.async_client import FaucetClient, IndexerClient, RestClient
+from supra_sdk.account import Account
+from supra_sdk.async_client import FaucetClient, IndexerClient, RestClient
 
 from .common import FAUCET_URL, INDEXER_URL, NODE_URL
 

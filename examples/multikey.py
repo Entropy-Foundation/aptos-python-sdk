@@ -1,23 +1,23 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import time
 
-from aptos_sdk import asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
-from aptos_sdk.account import Account
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.asymmetric_crypto_wrapper import MultiSignature, Signature
-from aptos_sdk.async_client import FaucetClient, IndexerClient, RestClient
-from aptos_sdk.authenticator import AccountAuthenticator, MultiKeyAuthenticator
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.transactions import (
+from supra_sdk import asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.asymmetric_crypto_wrapper import MultiSignature, Signature
+from supra_sdk.async_client import FaucetClient, IndexerClient, RestClient
+from supra_sdk.authenticator import AccountAuthenticator, MultiKeyAuthenticator
+from supra_sdk.bcs import Serializer
+from supra_sdk.transactions import (
     EntryFunction,
     SignedTransaction,
     TransactionArgument,
     TransactionPayload,
 )
-from aptos_sdk.type_tag import StructTag, TypeTag
+from supra_sdk.type_tag import StructTag, TypeTag
 
 from .common import FAUCET_URL, INDEXER_URL, NODE_URL
 
@@ -97,18 +97,6 @@ async def main():
         [supra_coin_type],
         transaction_arguments,
     )
-
-    # transaction_arguments = [
-    #     TransactionArgument(bob.address(), Serializer.struct),
-    #     TransactionArgument(1_000, Serializer.u64),
-    # ]
-    #
-    # payload = EntryFunction.natural(
-    #     "0x1::aptos_account",
-    #     "transfer",
-    #     [],
-    #     transaction_arguments,
-    # )
 
     raw_transaction = await rest_client.create_bcs_transaction(
         alice_address, TransactionPayload(payload)

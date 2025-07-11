@@ -8,8 +8,8 @@ import time
 import traceback
 import unittest
 
-from aptos_sdk.async_client import Account, ClientConfig, FaucetClient, RestClient
-from aptos_sdk.bcs import Serializer
+from supra_sdk.async_client import Account, ClientConfig, FaucetClient, RestClient
+from supra_sdk.bcs import Serializer
 
 
 class Test(unittest.IsolatedAsyncioTestCase):

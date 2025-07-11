@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 """
@@ -10,33 +10,33 @@ import os
 import unittest
 from typing import Optional
 
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper, AptosInstance
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.supra_cli_wrapper import SupraCLIWrapper, SupraInstance
 
-from .common import APTOS_CORE_PATH
+from .common import SUPRA_CORE_PATH
 
 
 class Test(unittest.IsolatedAsyncioTestCase):
-    _node: Optional[AptosInstance] = None
+    _node: Optional[SupraInstance] = None
 
     @classmethod
     def setUpClass(self):
-        if os.getenv("APTOS_TEST_USE_EXISTING_NETWORK"):
+        if os.getenv("SUPRA_TEST_USE_EXISTING_NETWORK"):
             return
 
-        self._node = AptosCLIWrapper.start_node()
+        self._node = SupraCLIWrapper.start_node()
         operational = asyncio.run(self._node.wait_until_operational())
         if not operational:
             raise Exception("".join(self._node.errors()))
 
-        os.environ["APTOS_FAUCET_URL"] = "http://127.0.0.1:27001"
-        os.environ["APTOS_INDEXER_CLIENT"] = "none"
-        os.environ["APTOS_NODE_URL"] = "http://127.0.0.1:27000"
+        os.environ["SUPRA_FAUCET_URL"] = "http://127.0.0.1:27001"
+        os.environ["SUPRA_INDEXER_CLIENT"] = "none"
+        os.environ["SUPRA_NODE_URL"] = "http://127.0.0.1:27000"
 
-    async def test_aptos_token(self):
-        from . import aptos_token
+    async def test_supra_token(self):
+        from . import supra_token
 
-        await aptos_token.main()
+        await supra_token.main()
 
     async def test_fee_payer_transfer_coin(self):
         from . import fee_payer_transfer_coin
@@ -47,9 +47,9 @@ class Test(unittest.IsolatedAsyncioTestCase):
         from . import hello_blockchain
 
         hello_blockchain_dir = os.path.join(
-            APTOS_CORE_PATH, "aptos-move", "move-examples", "hello_blockchain"
+            SUPRA_CORE_PATH, "supra-move", "move-examples", "hello_blockchain"
         )
-        AptosCLIWrapper.test_package(
+        SupraCLIWrapper.test_package(
             hello_blockchain_dir, {"hello_blockchain": AccountAddress.from_str("0xa")}
         )
         contract_address = await hello_blockchain.publish_contract(hello_blockchain_dir)
@@ -62,7 +62,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         from . import large_package_publisher
 
         large_packages_dir = os.path.join(
-            APTOS_CORE_PATH, "aptos-move", "move-examples", "large_packages"
+            SUPRA_CORE_PATH, "supra-move", "move-examples", "large_packages"
         )
         module_addr = await large_package_publisher.publish_large_packages(
             large_packages_dir
@@ -92,10 +92,10 @@ class Test(unittest.IsolatedAsyncioTestCase):
 
         await secp256k1_ecdsa_transfer_coin.main()
 
-    async def test_simple_aptos_token(self):
-        from . import simple_aptos_token
+    async def test_simple_supra_token(self):
+        from . import simple_supra_token
 
-        await simple_aptos_token.main()
+        await simple_supra_token.main()
 
     async def test_simple_nft(self):
         from . import simple_nft
@@ -121,16 +121,16 @@ class Test(unittest.IsolatedAsyncioTestCase):
         from . import your_coin
 
         moon_coin_path = os.path.join(
-            APTOS_CORE_PATH, "aptos-move", "move-examples", "moon_coin"
+            SUPRA_CORE_PATH, "supra-move", "move-examples", "moon_coin"
         )
-        AptosCLIWrapper.test_package(
+        SupraCLIWrapper.test_package(
             moon_coin_path, {"MoonCoin": AccountAddress.from_str("0xa")}
         )
         await your_coin.main(moon_coin_path)
 
     @classmethod
     def tearDownClass(self):
-        if os.getenv("APTOS_TEST_USE_EXISTING_NETWORK"):
+        if os.getenv("SUPRA_TEST_USE_EXISTING_NETWORK"):
             return
 
         self._node.stop()

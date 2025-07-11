@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from .transactions import RawTransactionInternal
 
 
 class Account:
-    """Represents an account as well as the private, public key-pair for the Aptos blockchain."""
+    """Represents an account as well as the private, public key-pair for the Supra blockchain."""
 
     account_address: AccountAddress
     private_key: asymmetric_crypto.PrivateKey

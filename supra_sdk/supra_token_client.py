@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -320,7 +320,7 @@ class ReadObject:
         return response
 
 
-class AptosTokenClient:
+class SupraTokenClient:
     """A wrapper around reading and mutating Digital Assets also known as Token Objects"""
 
     client: RestClient
@@ -403,7 +403,7 @@ class AptosTokenClient:
         royalty_numerator: int,
         royalty_denominator: int,
     ) -> str:  # <:!:create_collection
-        payload = AptosTokenClient.create_collection_payload(
+        payload = SupraTokenClient.create_collection_payload(
             description,
             max_supply,
             name,
@@ -469,7 +469,7 @@ class AptosTokenClient:
         uri: str,
         properties: PropertyMap,
     ) -> str:  # <:!:mint_token
-        payload = AptosTokenClient.mint_token_payload(
+        payload = SupraTokenClient.mint_token_payload(
             collection, description, name, uri, properties
         )
         signed_transaction = await self.client.create_bcs_signed_transaction(

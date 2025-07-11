@@ -1,21 +1,21 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import json
 import time
 
-from aptos_sdk.account import Account
-from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.authenticator import Authenticator, Ed25519Authenticator
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.transactions import (
+from supra_sdk.account import Account
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.authenticator import Authenticator, Ed25519Authenticator
+from supra_sdk.bcs import Serializer
+from supra_sdk.transactions import (
     EntryFunction,
     SignedTransaction,
     TransactionArgument,
     TransactionPayload,
 )
-from aptos_sdk.type_tag import StructTag, TypeTag
+from supra_sdk.type_tag import StructTag, TypeTag
 
 from .common import FAUCET_URL, NODE_URL
 

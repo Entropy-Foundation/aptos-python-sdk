@@ -1,16 +1,16 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 """
 This example depends on the hello_blockchain.move module having already been published to the destination blockchain.
 
 One method to do so is to use the CLI:
-    * Acquire the Aptos CLI
+    * Acquire the Supra CLI
     * `cd ~`
-    * `aptos init`
-    * `cd ~/aptos-core/aptos-move/move-examples/hello_blockchain`
-    * `aptos move publish --named-addresses hello_blockchain=${your_address_from_aptos_init}`
-    * `python -m examples.hello-blockchain ${your_address_from_aptos_init}`
+    * `supra init`
+    * `cd ~/supra-core/supra-move/move-examples/hello_blockchain`
+    * `supra move publish --named-addresses hello_blockchain=${your_address_from_supra_init}`
+    * `python -m examples.hello-blockchain ${your_address_from_supra_init}`
 """
 
 import asyncio
@@ -19,13 +19,13 @@ import sys
 import time
 from typing import Any, Dict, Optional
 
-from aptos_sdk.account import Account
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.aptos_cli_wrapper import AptosCLIWrapper
-from aptos_sdk.async_client import FaucetClient, ResourceNotFound, RestClient
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.package_publisher import PackagePublisher
-from aptos_sdk.transactions import (
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import FaucetClient, ResourceNotFound, RestClient
+from supra_sdk.bcs import Serializer
+from supra_sdk.package_publisher import PackagePublisher
+from supra_sdk.supra_cli_wrapper import SupraCLIWrapper
+from supra_sdk.transactions import (
     EntryFunction,
     TransactionArgument,
     TransactionPayload,
@@ -75,7 +75,7 @@ async def publish_contract(package_dir: str) -> AccountAddress:
     await faucet_client.faucet(contract_publisher.address())
     time.sleep(5)
 
-    AptosCLIWrapper.compile_package(
+    SupraCLIWrapper.compile_package(
         package_dir, {"hello_blockchain": contract_publisher.address()}
     )
 

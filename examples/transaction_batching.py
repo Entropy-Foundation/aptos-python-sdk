@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -10,20 +10,20 @@ from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 from typing import Any, List
 
-from aptos_sdk.account import Account
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.account_sequence_number import AccountSequenceNumber
-from aptos_sdk.aptos_token_client import AptosTokenClient, Property, PropertyMap
-from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.transaction_worker import TransactionWorker
-from aptos_sdk.transactions import (
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.account_sequence_number import AccountSequenceNumber
+from supra_sdk.async_client import ClientConfig, FaucetClient, RestClient
+from supra_sdk.bcs import Serializer
+from supra_sdk.supra_token_client import Property, PropertyMap, SupraTokenClient
+from supra_sdk.transaction_worker import TransactionWorker
+from supra_sdk.transactions import (
     EntryFunction,
     SignedTransaction,
     TransactionArgument,
     TransactionPayload,
 )
-from aptos_sdk.type_tag import StructTag, TypeTag
+from supra_sdk.type_tag import StructTag, TypeTag
 
 from .common import FAUCET_URL, NODE_URL
 
@@ -237,11 +237,11 @@ async def token_transaction(
 ) -> SignedTransaction:
     collection_name = "Funky Alice's"
     if sequence_number == 8351:
-        payload = AptosTokenClient.create_collection_payload(
+        payload = SupraTokenClient.create_collection_payload(
             "Alice's simple collection",
             20000000000,
             collection_name,
-            "https://aptos.dev",
+            "https://supra.dev",
             True,
             True,
             True,
@@ -255,11 +255,11 @@ async def token_transaction(
             1,
         )
     else:
-        payload = AptosTokenClient.mint_token_payload(
+        payload = SupraTokenClient.mint_token_payload(
             collection_name,
             "Alice's simple token",
             f"token {sequence_number}",
-            "https://aptos.dev/img/nyan.jpeg",
+            "https://supra.dev/img/nyan.jpeg",
             PropertyMap([Property.string("string", "string value")]),
         )
     return await client.create_bcs_signed_transaction(sender, payload, sequence_number)

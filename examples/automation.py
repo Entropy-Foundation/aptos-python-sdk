@@ -1,9 +1,9 @@
 import asyncio
 import time
 
-from aptos_sdk.account import Account
-from aptos_sdk.async_client import ClientConfig, FaucetClient, RestClient
-from aptos_sdk.bcs import Serializer
+from supra_sdk.account import Account
+from supra_sdk.async_client import ClientConfig, FaucetClient, RestClient
+from supra_sdk.bcs import Serializer
 
 from .common import FAUCET_URL, NODE_URL
 

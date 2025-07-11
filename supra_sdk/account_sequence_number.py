@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -9,8 +9,8 @@ import unittest
 import unittest.mock
 from typing import Callable, Optional
 
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.async_client import ApiError, RestClient
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import ApiError, RestClient
 
 
 class AccountSequenceNumberConfig:
@@ -24,7 +24,7 @@ class AccountSequenceNumberConfig:
 class AccountSequenceNumber:
     """
     A managed wrapper around sequence numbers that implements the trivial flow control used by the
-    Aptos faucet:
+    Supra faucet:
     * Submit up to 100 transactions per account in parallel with a timeout of 20 seconds
     * If local assumes 100 are in flight, determine the actual committed state from the network
     * If there are less than 100 due to some being committed, adjust the window
@@ -174,7 +174,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         * Ensure that synchronize completes if the value matches on-chain
         """
         patcher = unittest.mock.patch(
-            "aptos_sdk.async_client.RestClient.account_sequence_number", return_value=0
+            "supra_sdk.async_client.RestClient.account_sequence_number", return_value=0
         )
         patcher.start()
 
@@ -189,7 +189,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
 
         patcher.stop()
         patcher = unittest.mock.patch(
-            "aptos_sdk.async_client.RestClient.account_sequence_number", return_value=5
+            "supra_sdk.async_client.RestClient.account_sequence_number", return_value=5
         )
         patcher.start()
 
@@ -203,7 +203,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         next_sequence_number = last_seq_num + 1
         patcher.stop()
         patcher = unittest.mock.patch(
-            "aptos_sdk.async_client.RestClient.account_sequence_number",
+            "supra_sdk.async_client.RestClient.account_sequence_number",
             return_value=next_sequence_number,
         )
         patcher.start()

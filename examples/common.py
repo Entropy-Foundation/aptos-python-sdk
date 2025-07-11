@@ -1,21 +1,21 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import os
 import os.path
 
-APTOS_CORE_PATH = os.getenv(
-    "APTOS_CORE_PATH",
-    os.path.abspath("./aptos-core"),
+SUPRA_CORE_PATH = os.getenv(
+    "SUPRA_CORE_PATH",
+    os.path.abspath("./supra-core"),
 )
 # :!:>section_1
 FAUCET_URL = os.getenv(
-    "APTOS_FAUCET_URL",
+    "SUPRA_FAUCET_URL",
     "http://localhost:27001",
 )
 INDEXER_URL = os.getenv(
-    "APTOS_INDEXER_URL",
-    "https://api.devnet.aptoslabs.com/v1/graphql",
+    "SUPRA_INDEXER_URL",
+    "https://api.devnet.supralabs.com/v1/graphql",
 )
-NODE_URL = os.getenv("APTOS_NODE_URL", "http://localhost:27000")
+NODE_URL = os.getenv("SUPRA_NODE_URL", "http://localhost:27000")
 # <:!:section_1
