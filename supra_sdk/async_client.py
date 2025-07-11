@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import json
 import time
 from dataclasses import dataclass
 from http import HTTPStatus
@@ -1521,61 +1520,6 @@ class RestClient:
                 f"{resp.text} - table_handle: {table_handle}", resp.status_code
             )
         return resp.json()
-
-    # NEED to DEBUG THIS !!
-    async def get_table_item(
-        self,
-        handle: str,
-        key_type: str,
-        value_type: str,
-        key: Any,
-        ledger_version: Optional[int] = None,
-    ) -> Any:
-        """
-        Retrieve an item from a table by handle and key (Supra-compatible method).
-
-        Args:
-            handle (str): Table handle as string
-            key_type (str): The type of the table key
-            value_type (str): The type of the table value
-            key (Any): The key to fetch from the table
-            ledger_version (Optional[int]): Specific ledger version (unused in Supra)
-
-        Returns:
-            Any: Item from the table
-        """
-        print(f"Handle received: {handle}, type: {type(handle)}")
-        print(f"Key received: {key}, type: {type(key)}")
-        print(f"Key type: {key_type}")
-        print(f"Value type: {value_type}")
-        # Convert to Supra's format
-        table_handle = AccountAddress.from_str(handle)
-        if isinstance(key, dict):
-            formatted_key = json.dumps(key, separators=(",", ":"))  # Compact JSON
-        else:
-            formatted_key = str(key)
-
-        print(
-            f"Formatted key before TableItemRequest: {formatted_key}, type: {
-                type(formatted_key)
-            }"
-        )
-        table_request = TableItemRequest(
-            key_type=key_type,
-            value_type=value_type,
-            key=key,
-        )
-
-        print(
-            f"TableItemRequest.key after creation: {table_request.key}, type: {
-                type(table_request.key)
-            }"
-        )
-
-        return await self.table_items_by_key(
-            table_handle=table_handle,
-            table_item_request=table_request,
-        )
 
     ########
     # VIEW #
