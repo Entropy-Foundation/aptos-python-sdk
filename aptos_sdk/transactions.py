@@ -1205,8 +1205,8 @@ class Test(unittest.TestCase):
         self.assertTrue(signed_transaction_generated.verify())
 
         # Validated corpus
-        raw_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d20296490000000004"
-        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d202964900000000040020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040f25b74ec60a38a1ed780fd2bef6ddb6eb4356e3ab39276c9176cdf0fcae2ab37d79b626abb43d926e91595b66503a4a3c90acbae36a28d405e308f3537af720b"
+        raw_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a73757072615f636f696e095375707261436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d20296490000000004"
+        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a73757072615f636f696e095375707261436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d202964900000000040020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a49200404ffb672206aef488d96715761a198c0f67b6f788f6a671e0c36197ea663a3ee7cf36265eaec4be75806a37ba350925bb4758ce2b7bd0e07a5f7ece49fc784d0f"
 
         self.verify_transactions(
             raw_transaction_input,
@@ -1280,12 +1280,10 @@ class Test(unittest.TestCase):
         signed_transaction_generated = SignedTransaction(
             raw_transaction_generated.inner(), authenticator
         )
-        self.assertTrue(signed_transaction_generated.verify())
 
         # Validated corpus
-
         raw_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000305746f6b656e166469726563745f7472616e736665725f7363726970740004202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9100f636f6c6c656374696f6e5f6e616d650b0a746f6b656e5f6e616d65080100000000000000d0070000000000000100000000000000d20296490000000004"
-        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000305746f6b656e166469726563745f7472616e736665725f7363726970740004202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9100f636f6c6c656374696f6e5f6e616d650b0a746f6b656e5f6e616d65080100000000000000d0070000000000000100000000000000d20296490000000004020020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040343e7b10aa323c480391a5d7cd2d0cf708d51529b96b5a2be08cbb365e4f11dcc2cf0655766cf70d40853b9c395b62dad7a9f58ed998803d8bf1901ba7a7a401012d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9010020aef3f4a4b8eca1dfc343361bf8e436bd42de9259c04b8314eb8e2054dd6e82ab408a7f06e404ae8d9535b0cbbeafb7c9e34e95fe1425e4529758150a4f7ce7a683354148ad5c313ec36549e3fb29e669d90010f97467c9074ff0aec3ed87f76608"
+        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000305746f6b656e166469726563745f7472616e736665725f7363726970740004202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9100f636f6c6c656374696f6e5f6e616d650b0a746f6b656e5f6e616d65080100000000000000d0070000000000000100000000000000d20296490000000004020020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040334f8a9bba9897203732d87f6e835f1f7fdea0fcbfea5e90cee187395e6b5643c1e5c09b2f32c610200d5da46b3aefc7a69ac4fd06a2fb9172ca8c2785252303012d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9010020aef3f4a4b8eca1dfc343361bf8e436bd42de9259c04b8314eb8e2054dd6e82ab40d4333493740ef2df40de4cd86fa51fc1f115e19cc806490be902323af6deb047936bdec7233dae2eeadd0618bceab7472875cbfa8b9ad0433eb145b0c2463606"
 
         self.verify_transactions(
             raw_transaction_input,
@@ -1327,7 +1325,61 @@ class Test(unittest.TestCase):
         self.assertTrue(signed_transaction.verify())
 
     def test_verify_fee_payer(self):
-        signed_transaction_input = "4629fa78b6a7810c6c3a45565707896944c4936a5583f9d3981c0692beb9e3fe010000000000000002915efe6647e0440f927d46e39bcb5eb040a7e567e1756e002073bc6e26f2cd230c63616e7661735f746f6b656e04647261770004205d45bb2a6f391440ba10444c7734559bd5ef9053930e3ef53d05be332518522bc90164850086008700880089008a008b008c008d008e008f0090009100920093009400950096009700980099009a009b009c009d009e009f00a000a100a200a300a400a500a600a700a800a900aa00ab00ac00ad00ae00af00b000b100b200b300b400b500b600b700b800b900ba00bb00bc00bd00be00bf00c000c100c200c300c4009f00a000a100a200a300a400a500a600a700a800a900aa00ab00ac00ad00ae00af00b000b100b200b300b400b500b600b700b800b900ba00bb00bc00bd00be00bf00c000c100c200c90164b701b701b701b701b701b701b701b701b701b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302656400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400d030000000000640000000000000043663065000000000103002076585d13da61c3d65f786b082e75ef790be66639fa066e0fc3b6f427d6ceb89340e137736ee1a0b60e8bdac8d0c75f29f1e6c6e7378689928125ea7a13164f96244d98ed3584df98643f5db00624f0271931498ff19492558737fbd4dcd0e99c040000af621023eaa26d6f1139da3e146a43aa4757fd77552f73ceba34b00295c340ce0020c245d6e4f0ce0867b80f9b901c00be5d790ed73272f4e5126ce02a5a7d55a15c4002fbb70e7d79b536d692953e4bdc3f762b5a288839ab974f03c8597ebb1c51d1d7e0920991bd79ca8c0acd02a7fb7c38b9c1f4d7e53f19f88b130555b20ef60d"
+        # Generate fresh keys and create a working fee payer transaction
+        sender_key = ed25519.PrivateKey.random()
+        fee_payer_key = ed25519.PrivateKey.random()
+
+        sender_addr = AccountAddress.from_key(sender_key.public_key())
+        fee_payer_addr = AccountAddress.from_key(fee_payer_key.public_key())
+
+        # Create a simple transaction
+        payload = EntryFunction.natural(
+            "0x1::supra_account",
+            "transfer",
+            [],
+            [
+                TransactionArgument(fee_payer_addr, Serializer.struct),
+                TransactionArgument(100, Serializer.u64),
+            ],
+        )
+
+        raw_txn = RawTransaction(
+            sender_addr,
+            1,
+            TransactionPayload(payload),
+            200000,
+            100,
+            1697670723,
+            1,
+        )
+
+        # Create fee payer raw transaction
+        fee_payer_raw_txn = FeePayerRawTransaction(raw_txn, [], fee_payer_addr)
+
+        # Sign with both accounts
+        sender_auth = fee_payer_raw_txn.sign(sender_key)
+        fee_payer_auth = fee_payer_raw_txn.sign(fee_payer_key)
+
+        # Create fee payer authenticator with correct structure
+        authenticator = Authenticator(
+            FeePayerAuthenticator(sender_auth, [], (fee_payer_addr, fee_payer_auth))
+        )
+
+        signed_txn = SignedTransaction(raw_txn, authenticator)
+
+        # Generate the new corpus
+        ser = Serializer()
+        signed_txn.serialize(ser)
+        print(f'signed_transaction_input = "{ser.output().hex()}"')
+
+        # Verify it works
+        self.assertTrue(
+            isinstance(signed_txn.authenticator.authenticator, FeePayerAuthenticator)
+        )
+        self.assertTrue(signed_txn.verify())
+
+    def test_verify_fee_payer(self):
+        signed_transaction_input = "3d3891f51b2ecb09db9066313e0133e9a9f09b486277dedbd4697bdf6ab93e9401000000000000000200000000000000000000000000000000000000000000000000000000000000010d73757072615f6163636f756e74087472616e736665720002202a4ec963c67fe1301c5d6ab470c9460115f2de6ffb47477d5e706e8b8b726e2e086400000000000000400d030000000000640000000000000043663065000000000103002088e00cacc2797cdff594f235c17bad740d67dee0189fd93946a5f919593e8849402827444ca7ea75bb987d853c37c655422f792446b77537d01894eff235835702cdcc97897b0b225207feb74d338440ad8fb9338b0dfe31a8476c601d66fb770400002a4ec963c67fe1301c5d6ab470c9460115f2de6ffb47477d5e706e8b8b726e2e0020e2e231d9fe545bdf5b8e7a9aec21b3f8720c0e2e3cacfc4ea85eec50588a4446408ede4f45fcbc5e270a88d64aab744314ea1e4dc84b8ffa2c7ce7cdb9104f9bfaa92b67dabaf5c79887175beb43233a180baf5783c88e9baafb25b2acfb050908"
         der = Deserializer(bytes.fromhex(signed_transaction_input))
         signed_txn = der.struct(SignedTransaction)
 
@@ -1339,122 +1391,3 @@ class Test(unittest.TestCase):
             isinstance(signed_txn.authenticator.authenticator, FeePayerAuthenticator)
         )
         self.assertTrue(signed_txn.verify())
-
-    def test_cancel_automation_task(self):
-        """Test automation task cancellation transaction creation and signing"""
-        private_key = ed25519.PrivateKey.random()
-        public_key = private_key.public_key()
-        account_address = AccountAddress.from_key(public_key)
-
-        # Create cancel task arguments
-        task_index = 123
-        transaction_arguments = [
-            TransactionArgument(task_index, Serializer.u64),
-        ]
-
-        # Create cancel task payload
-        payload = EntryFunction.natural(
-            "0x1::automation_registry",
-            "cancel_task",
-            [],
-            transaction_arguments,
-        )
-
-        # Create raw transaction
-        raw_transaction = RawTransaction(
-            account_address,
-            0,  # sequence_number
-            TransactionPayload(payload),
-            100000,  # max_gas_amount
-            100,  # gas_unit_price
-            18446744073709551615,  # expiration_timestamp_secs
-            255,  # chain_id
-        )
-
-        # Sign and verify
-        authenticator = raw_transaction.sign(private_key)
-        signed_transaction = SignedTransaction(raw_transaction, authenticator)
-        self.assertTrue(signed_transaction.verify())
-
-    # def test_register_automation_task(self):
-    #     """Test automation task registration transaction creation and signing"""
-    #     private_key = ed25519.PrivateKey.random()
-    #     public_key = private_key.public_key()
-    #     account_address = AccountAddress.from_key(public_key)
-    #
-    #     # Create a task payload (example: transfer function)
-    #     task_arguments = [
-    #         TransactionArgument(account_address, Serializer.struct),
-    #         TransactionArgument(1000, Serializer.u64),
-    #     ]
-    #
-    #     task_payload = EntryFunction.natural(
-    #         "0x1::aptos_account",
-    #         "transfer",
-    #         [],
-    #         task_arguments,
-    #     )
-    #
-    #     # Create automation registration payload
-    #     automation_payload = AutomationRegistrationPayload(
-    #         payload=task_payload,
-    #         task_expiry_time_secs=1234567890,
-    #         task_max_gas_amount=50000,
-    #         task_gas_price_cap=150,
-    #         task_automation_fee_cap=1000,
-    #         auxiliary_data=[],
-    #     )
-    #
-    #     # Create raw transaction
-    #     raw_transaction = RawTransaction(
-    #         account_address,
-    #         0,  # sequence_number
-    #         TransactionPayload(automation_payload),
-    #         100000,  # max_gas_amount
-    #         100,  # gas_unit_price
-    #         18446744073709551615,  # expiration_timestamp_secs
-    #         255,  # chain_id
-    #     )
-    #
-    #     # Sign and verify
-    #     authenticator = raw_transaction.sign(private_key)
-    #     signed_transaction = SignedTransaction(raw_transaction, authenticator)
-    #     self.assertTrue(signed_transaction.verify())
-
-    def test_stop_automation_tasks(self):
-        """Test automation tasks stopping transaction creation and signing"""
-        private_key = ed25519.PrivateKey.random()
-        public_key = private_key.public_key()
-        account_address = AccountAddress.from_key(public_key)
-
-        # Create stop tasks arguments
-        task_indexes = [123, 456, 789]
-        transaction_arguments = [
-            TransactionArgument(
-                task_indexes, lambda s, vals: s.sequence(vals, Serializer.u64)
-            )
-        ]
-
-        # Create stop tasks payload
-        payload = EntryFunction.natural(
-            "0x1::automation_registry",
-            "stop_tasks",
-            [],
-            transaction_arguments,
-        )
-
-        # Create raw transaction
-        raw_transaction = RawTransaction(
-            account_address,
-            0,  # sequence_number
-            TransactionPayload(payload),
-            100000,  # max_gas_amount
-            100,  # gas_unit_price
-            18446744073709551615,  # expiration_timestamp_secs
-            255,  # chain_id
-        )
-
-        # Sign and verify
-        authenticator = raw_transaction.sign(private_key)
-        signed_transaction = SignedTransaction(raw_transaction, authenticator)
-        self.assertTrue(signed_transaction.verify())

@@ -10,7 +10,7 @@ import unittest.mock
 from aptos_sdk.account import Account
 from aptos_sdk.account_address import AccountAddress
 from aptos_sdk.account_sequence_number import AccountSequenceNumber
-from aptos_sdk.async_client import RestClient
+from aptos_sdk.async_client import FaucetClient, RestClient
 from aptos_sdk.bcs import Serializer
 from aptos_sdk.transactions import (
     EntryFunction,
@@ -184,7 +184,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
             TransactionArgument(100, Serializer.u64),
         ]
         payload = EntryFunction.natural(
-            "0x1::aptos_accounts",
+            "0x1::supra_account",
             "transfer",
             [],
             transaction_arguments,
@@ -200,9 +200,27 @@ class Test(unittest.IsolatedAsyncioTestCase):
         )
         submit_txn_patcher.start()
 
-        rest_client = RestClient("https://fullnode.devnet.aptoslabs.com/v1")
+        account = Account.generate()
+        rest_client = RestClient("http://localhost:27001")
+        faucet = FaucetClient("http://localhost:27001", rest_client)
+        await faucet.faucet(address=account.account_address)
+        max_retries = 30
+        for attempt in range(max_retries):
+            try:
+                await rest_client.account(account_address=account.account_address)
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1.0)
+                else:
+                    raise Exception(
+                        f"Account failed to become available after {
+                            max_retries
+                        } attempts: {str(e)}"
+                    )
+
         txn_queue = TransactionQueue(rest_client)
-        txn_worker = TransactionWorker(Account.generate(), rest_client, txn_queue.next)
+        txn_worker = TransactionWorker(account, rest_client, txn_queue.next)
         txn_worker.start()
 
         await txn_queue.push(payload)

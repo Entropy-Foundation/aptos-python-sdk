@@ -202,6 +202,19 @@ class RestClient:
         return resp.json()
 
     async def account_balance(self, data: Union[Dict[str, Any], bytes]) -> int:
+        """
+        Get the account balance.
+
+        This method calls the `view_function` to retrieve the balance of an account
+        and returns it as an integer.
+
+        Args:
+            data (Union[Dict[str, Any], bytes]): The payload or raw bytes required
+                by the view function to fetch the balance.
+
+        Returns:
+            int: The account balance.
+        """
         res = await self.view_function(data)
         return int(res["result"][0])
 
@@ -210,6 +223,21 @@ class RestClient:
         account_address: AccountAddress,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
     ) -> int:
+        """
+        Get the sequence number for an account.
+
+        This method retrieves the current sequence number (nonce) for the given
+        account address. The sequence number is typically used to prevent
+        transaction replay and ensure transaction ordering.
+
+        Args:
+            account_address (AccountAddress): The address of the account.
+            accept_type (SupraRestAcceptType, optional): The accepted response
+                format. Defaults to `SupraRestAcceptType.JSON`.
+
+        Returns:
+            int: The account's current sequence number.
+        """
         res = await self.account(
             account_address=account_address, accept_type=accept_type
         )
@@ -256,7 +284,6 @@ class RestClient:
         address: AccountAddress,
         pagination: Optional[AccountAutomatedTxPagination] = None,
         accept_type: SupraRestAcceptType = SupraRestAcceptType.JSON,
-        # TODO: Add return type
     ):
         """
         Fetches automated transactions for a given account.
@@ -456,6 +483,46 @@ class RestClient:
             raise ApiError(f"{resp.text} - {address}", resp.status_code)
         return resp.json()
 
+    async def aggregator_value(
+        self,
+        account_address: AccountAddress,
+        resource_type: str,
+        aggregator_path: List[str],
+    ) -> int:
+        source = await self.account_specific_resource((account_address, resource_type))
+        source_data = data = source["data"]
+
+        while len(aggregator_path) > 0:
+            key = aggregator_path.pop()
+            if key not in data:
+                raise ApiError(
+                    f"aggregator path not found in data: {source_data}", source_data
+                )
+            data = data[key]
+
+        if "vec" not in data:
+            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
+        data = data["vec"]
+        if len(data) != 1:
+            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
+        data = data[0]
+        if "aggregator" not in data:
+            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
+        data = data["aggregator"]
+        if "vec" not in data:
+            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
+        data = data["vec"]
+        if len(data) != 1:
+            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
+        data = data[0]
+        if "handle" not in data:
+            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
+        if "key" not in data:
+            raise ApiError(f"aggregator not found in data: {source_data}", source_data)
+        handle = data["handle"]
+        key = data["key"]
+        return int(await self.get_table_item(handle, "address", "u128", key))
+
     ################
     # TRANSACTIONS #
     ################
@@ -565,6 +632,21 @@ class RestClient:
     async def simulate_bcs_txn(
         self, transaction_data: SignedTransaction | bytes
     ) -> Dict[str, Any]:
+        """
+        Simulate a BCS (Binary Canonical Serialization) transaction without submitting it.
+
+        This method serializes the provided transaction if needed, then sends it to
+        the simulation endpoint. This allows you to estimate gas usage or check validity
+        before broadcasting the transaction.
+
+        Args:
+            transaction_data (Union[SignedTransaction, bytes]): The signed transaction
+                object or raw BCS bytes to simulate.
+
+        Returns:
+            Dict[str, Any]: The simulation result returned by the Supra node.
+        """
+
         headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
         endpoint = "rpc/v3/transactions/simulate"
 
@@ -582,6 +664,20 @@ class RestClient:
         return resp.json()
 
     async def submit_bcs_txn(self, transaction_data: SignedTransaction | bytes) -> str:
+        """
+        Submit a signed BCS transaction to the network.
+
+        This method serializes the transaction if needed, sends it to the submit
+        endpoint, and returns the transaction hash.
+
+        Args:
+            transaction_data (Union[SignedTransaction, bytes]): The signed transaction
+                object or raw BCS bytes to submit.
+
+        Returns:
+            str: The transaction hash of the submitted transaction.
+        """
+
         endpoint = "rpc/v3/transactions/submit"
         headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
 
@@ -602,11 +698,37 @@ class RestClient:
     async def submit_and_wait_for_bcs_transaction(
         self, signed_transaction: bytes
     ) -> Dict[str, Any]:
+        """
+        Submit a signed BCS transaction and wait for its final confirmation.
+
+        This method submits the transaction, waits until it moves out of the pending
+        state, and returns the finalized transaction details.
+
+        Args:
+            signed_transaction (bytes): The raw BCS-encoded signed transaction.
+
+        Returns:
+            Dict[str, Any]: The confirmed transaction details.
+        """
+
         txn_hash = await self.submit_bcs_txn(signed_transaction)
         await self.wait_for_transaction(txn_hash)
         return await self.transaction_by_hash(txn_hash)
 
     async def transaction_pending(self, txn_hash: str) -> bool:
+        """
+        Check if a transaction is still pending.
+
+        This method queries the transaction by its hash and determines if it's
+        still in the pending state.
+
+        Args:
+            txn_hash (str): The hash of the transaction to check.
+
+        Returns:
+            bool: True if the transaction is pending or not found yet; False otherwise.
+        """
+
         try:
             response = await self.transaction_by_hash(txn_hash)
             return response.get("type") == "pending_transaction"
@@ -619,9 +741,18 @@ class RestClient:
 
     async def wait_for_transaction(self, txn_hash: str) -> None:
         """
-        Waits up to the duration specified in client_config for a transaction to move past pending
-        state.
+        Wait for a transaction to complete or fail.
+
+        This method repeatedly checks the transaction status until it is no longer
+        pending or until the configured timeout is reached.
+
+        Args:
+            txn_hash (str): The hash of the transaction to wait for.
+
+        Raises:
+            AssertionError: If the transaction times out or fails with a non-success status.
         """
+
         count = 0
         while await self.transaction_pending(txn_hash):
             assert count < self.client_config.transaction_wait_in_seconds, (
@@ -632,7 +763,6 @@ class RestClient:
 
         # Get final transaction data
         txn_data = await self.transaction_by_hash(txn_hash)
-        print("\ntxn_data :> ", txn_data, "\n")
 
         assert txn_data.get("status") == "Success", f"Transaction failed with status: {
             txn_data.get('status')
@@ -649,7 +779,19 @@ class RestClient:
         payload: TransactionPayload,
     ) -> SignedTransaction:
         """
-        NOT PRESENT IN SUPRA
+        Create a multi-agent BCS signed transaction.
+
+        This method builds and signs a multi-agent transaction, where the main sender
+        and one or more secondary accounts sign the same raw transaction.
+
+        Args:
+            sender (Account): The primary account sending the transaction.
+            secondary_accounts (List[Account]): The secondary accounts that must also
+                authorize the transaction.
+            payload (TransactionPayload): The transaction payload to execute.
+
+        Returns:
+            SignedTransaction: The signed multi-agent BCS transaction.
         """
 
         raw_transaction = MultiAgentRawTransaction(
@@ -686,7 +828,21 @@ class RestClient:
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> RawTransaction:
-        """Create a raw BCS transaction"""
+        """
+        Create an unsigned BCS raw transaction.
+
+        This method builds a raw transaction with the provided sender, payload, and
+        optionally a custom sequence number.
+
+        Args:
+            sender (Union[Account, AccountAddress]): The account object or its address.
+            payload (TransactionPayload): The payload describing the action to perform.
+            sequence_number (Optional[int], optional): The sender's sequence number.
+                If not provided, it will be fetched automatically.
+
+        Returns:
+            RawTransaction: The constructed raw transaction.
+        """
 
         # Extract sender address
         sender_address = sender.address() if isinstance(sender, Account) else sender
@@ -716,7 +872,21 @@ class RestClient:
         payload: TransactionPayload,
         sequence_number: Optional[int] = None,
     ) -> SignedTransaction:
-        """Create a signed BCS transaction ready for submission"""
+        """
+        Create a BCS signed transaction and serialize it.
+
+        This method builds a raw transaction, signs it using the sender's key, wraps it
+        in an authenticator, and serializes it to BCS format ready for submission.
+
+        Args:
+            sender (Account): The account signing the transaction.
+            payload (TransactionPayload): The transaction payload.
+            sequence_number (Optional[int], optional): The sequence number to use.
+                If not provided, the current sequence number will be fetched.
+
+        Returns:
+            bytes: The serialized BCS signed transaction.
+        """
 
         # Get account info and chain ID in parallel
         account_info, chain_id = await asyncio.gather(
@@ -785,8 +955,37 @@ class RestClient:
         expiration_timestamp_secs: Optional[int] = None,
     ) -> RawTransaction:
         """
-        Python equivalent of TypeScript's createSerializedAutomationRegistrationTxPayloadRawTxObject
+        Create a raw transaction for an automation registration payload.
+
+        This method constructs a `RawTransaction` that registers an automated
+        function call with custom gas limits, fee caps, expiration, and auxiliary data.
+        It builds an `EntryFunction` payload wrapped in an automation registration
+        payload.
+
+        Args:
+            sender_addr (AccountAddress): The address of the transaction sender.
+            chain_id (int): The chain ID for the transaction.
+            sender_sequence_number (int): The sender's sequence number (nonce).
+            module_addr (str): The address of the module containing the function.
+            module_name (str): The name of the module.
+            function_name (str): The name of the function to automate.
+            function_type_args (List[TypeTag]): Type arguments for the function.
+            function_args (List[bytes]): Arguments for the function.
+            automation_max_gas_amount (int): Max gas allowed for automation.
+            automation_gas_price_cap (int): Gas price cap for automation execution.
+            automation_fee_cap_for_epoch (int): Maximum total fee for the epoch.
+            automation_expiration_timestamp_secs (int): Expiration time for automation.
+            automation_aux_data (List[bytes]): Auxiliary data for automation.
+            max_gas_amount (int, optional): Max gas amount for the transaction.
+                Defaults to 100,000,000.
+            gas_unit_price (int, optional): Gas price per unit. Defaults to 100.
+            expiration_timestamp_secs (Optional[int], optional): Transaction expiration
+                timestamp. If not provided, defaults to current time + 600 seconds.
+
+        Returns:
+            RawTransaction: The constructed raw transaction for automation registration.
         """
+
         module_id = ModuleId(
             address=AccountAddress.from_str(f"0x{module_addr.zfill(64)}"),
             name=module_name,
@@ -833,9 +1032,24 @@ class RestClient:
         enable_wait_for_transaction: bool = True,
     ) -> Dict[str, Any]:
         """
-        Python equivalent of TypeScript's sendTxUsingSerializedRawTransaction with Supra serialization.
+        Sign and send an automation raw transaction.
+
+        This method signs the provided raw transaction with the sender's key,
+        optionally simulates it by breaking the signature, or submits it to the
+        network and waits for confirmation.
+
+        Args:
+            sender (Account): The account signing and sending the transaction.
+            raw_transaction (RawTransaction): The raw transaction to send.
+            enable_transaction_simulation (bool, optional): If True, simulates the
+                transaction by intentionally breaking the signature. Defaults to True.
+            enable_wait_for_transaction (bool, optional): If True, waits for the
+                transaction to complete. Defaults to True.
+
+        Returns:
+            Dict[str, Any]: The result of the simulation or submission.
         """
-        # Prepare the raw transaction and signature
+
         signature = sender.sign(raw_transaction.keyed())
 
         if enable_transaction_simulation:
@@ -911,13 +1125,7 @@ class RestClient:
             authenticator = Authenticator(ed25519_auth)
             signed_transaction = SignedTransaction(raw_txn, authenticator)
 
-            supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
-            supra_serializer = Serializer()
-            supra_txn.serialize(supra_serializer)
-
-            return await self.simulate_bcs_txn(
-                transaction_data=supra_serializer.output()
-            )
+            return await self.simulate_bcs_txn(transaction_data=signed_transaction)
         else:
             signed_transaction = await self.create_bcs_signed_transaction(
                 sender, TransactionPayload(payload), sequence_number=sequence_number
@@ -978,13 +1186,7 @@ class RestClient:
             authenticator = Authenticator(ed25519_auth)
             signed_transaction = SignedTransaction(raw_txn, authenticator)
 
-            supra_txn = SupraTransaction.create_move_transaction(signed_transaction)
-            supra_serializer = Serializer()
-            supra_txn.serialize(supra_serializer)
-
-            return await self.simulate_bcs_txn(
-                transaction_data=supra_serializer.output()
-            )
+            return await self.simulate_bcs_txn(transaction_data=signed_transaction)
 
         else:
             signed_transaction = await self.create_bcs_signed_transaction(
@@ -1002,7 +1204,20 @@ class RestClient:
         sequence_number: Optional[int] = None,
     ) -> str:
         """
-        NOT PRESENT IN SUPRA
+        Transfer SupraCoin to a recipient using a BCS signed transaction.
+
+        This method builds an `EntryFunction` payload for transferring the default
+        SupraCoin, signs it with the sender's account, and submits it to the network.
+
+        Args:
+            sender (Account): The account sending the coins.
+            recipient (AccountAddress): The recipient's account address.
+            amount (int): The amount of coins to transfer.
+            sequence_number (Optional[int], optional): The sender's sequence number.
+                If not provided, it will be fetched automatically.
+
+        Returns:
+            str: The hash of the submitted transaction.
         """
 
         transaction_arguments = [
@@ -1032,7 +1247,21 @@ class RestClient:
         sequence_number: Optional[int] = None,
     ) -> str:
         """
-        NOT PRESENT IN SUPRA
+        Transfer a specified coin type to a recipient.
+
+        This method builds a coin transfer payload for any supported coin type,
+        signs it with the sender's account, and submits it to the network.
+
+        Args:
+            sender (Account): The account sending the coins.
+            recipient (AccountAddress): The recipient's account address.
+            coin_type (str): The fully-qualified coin type tag (e.g., '0x1::supra_coin::SupraCoin').
+            amount (int): The amount of coins to transfer.
+            sequence_number (Optional[int], optional): The sender's sequence number.
+                If not provided, it will be fetched automatically.
+
+        Returns:
+            str: The hash of the submitted transaction.
         """
 
         transaction_arguments = [
@@ -1056,7 +1285,18 @@ class RestClient:
         self, owner: Account, object: AccountAddress, to: AccountAddress
     ) -> str:
         """
-        NOT PRESENT IN SUPRA
+        Transfer an object to another account.
+
+        This method builds an object transfer payload, signs it with the owner's
+        account, and submits it to the network.
+
+        Args:
+            owner (Account): The owner account sending the object.
+            object (AccountAddress): The address of the object to transfer.
+            to (AccountAddress): The recipient's account address.
+
+        Returns:
+            str: The hash of the submitted transaction.
         """
 
         transaction_arguments = [
@@ -1239,6 +1479,13 @@ class RestClient:
             raise ApiError(f"{resp.text} - epoch: {epoch}", resp.status)
         return resp.json()
 
+    async def current_timestamp(self) -> float:
+        block_info = await self.latest_block()
+        return (
+            float(block_info["header"]["timestamp"]["microseconds_since_unix_epoch"])
+            / 1_000_000
+        )
+
     ##########
     # TABLES #
     ##########
@@ -1384,10 +1631,6 @@ class RestClient:
         if resp.status_code != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {event_type} || {query}", resp.status_code)
         return resp.json()
-
-    ##########
-    # WALLET #
-    ##########
 
     ###########
     # HELPERS #

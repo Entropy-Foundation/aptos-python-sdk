@@ -129,7 +129,9 @@ class AccountSequenceNumber:
             ledger_time = await self._client.current_timestamp()
             if ledger_time - start_time > self._maximum_wait_time:
                 logging.warn(
-                    f"Waited over {self._maximum_wait_time} seconds for a transaction to commit, resyncing {self._account}"
+                    f"Waited over {
+                        self._maximum_wait_time
+                    } seconds for a transaction to commit, resyncing {self._account}"
                 )
                 failed = True
                 break
@@ -176,7 +178,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         )
         patcher.start()
 
-        rest_client = RestClient("https://fullnode.devnet.aptoslabs.com/v1")
+        rest_client = RestClient("http://localhost:27001")
         account_sequence_number = AccountSequenceNumber(
             rest_client, AccountAddress.from_str("0xf")
         )
