@@ -35,7 +35,6 @@ from .transactions import (
     AutomationRegistrationParamsV1Data,
     EntryFunction,
     ModuleId,
-    MoveTransaction,
     MultiAgentRawTransaction,
     RawTransaction,
     SignedTransaction,
@@ -582,9 +581,7 @@ class RestClient:
             raise ApiError(f"{resp.text} - {hash}", resp.status_code)
         return resp.json()
 
-    async def submit_txn(
-        self, transaction_data: Union[MoveTransaction, SupraTransaction, bytes]
-    ) -> str:
+    async def submit_txn(self, transaction_data: Dict[str, Any]) -> str:
         """
         Submits a signed transaction for execution.
 
@@ -605,9 +602,7 @@ class RestClient:
             raise ApiError(f"{resp.text} - {txn_data}", resp.status_code)
         return resp.json()
 
-    async def simulate_tx(
-        self, transaction_data: Union[SupraTransaction, bytes]
-    ) -> Dict[str, Any]:
+    async def simulate_tx(self, transaction_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Simulates a transaction without submitting it to the chain.
 

@@ -416,21 +416,32 @@ class EntryFunction:
         self.args = args
 
     def to_dict(self) -> Dict[str, Any]:
-        # return {
-        #     "type": "entry_function_payload",
-        #     "function": f"{self.module.address}::{self.module.name}::{self.function}",
-        #     "type_arguments": self.ty_args,
-        #     "arguments": [arg.hex() for arg in self.args],
-        # }
         return {
             "module": {
                 "address": str(self.module.address.__str__()),
                 "name": self.module.name,
             },
             "function": self.function,
-            "ty_args": self.ty_args,
+            "ty_args": [self._type_tag_to_dict(ty_arg) for ty_arg in self.ty_args],
             "args": [arg.hex() for arg in self.args],
         }
+
+    def _type_tag_to_dict(self, type_tag: TypeTag) -> Dict[str, Any]:
+        """Convert TypeTag to the JSON structure expected by the server"""
+        if hasattr(type_tag, "value") and hasattr(type_tag.value, "address"):
+            # It's a StructTag
+            struct_tag = type_tag.value
+            return {
+                "Struct": {
+                    "address": str(struct_tag.address),
+                    "module": struct_tag.module,
+                    "name": struct_tag.name,
+                    "type_args": [],
+                }
+            }
+        else:
+            # Handle other type tag variants as needed
+            return {"Struct": str(type_tag)}
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, EntryFunction):
@@ -807,31 +818,6 @@ class SupraTransaction:
         serializer = Serializer()
         self.serialize(serializer)
         return serializer.output()
-
-
-"""
-"Smr": {
-    "signer_data": self.signer_data,
-    "transaction": {
-        "header": {
-            "chain_id": self.raw_transaction.chain_id,
-            "expiration_timestamp": {
-                "microseconds_since_unix_epoch": self.raw_transaction.expiration_timestamps_secs
-                * 1000000,
-                "utc_date_time": datetime.datetime.fromtimestamp(
-                    self.raw_transaction.expiration_timestamps_secs,
-                    tz=datetime.timezone.utc,
-                ).isoformat(),
-            },
-            "sender": {"Supra": self.raw_transaction.sender.__str__()},
-            "sequence_number": self.raw_transaction.sequence_number,
-            "gas_unit_price": self.raw_transaction.gas_unit_price,
-            "max_gas_amount": self.raw_transaction.max_gas_amount,
-        },
-        "payload": {"Oracle": self.raw_transaction.payload.to_dict()},
-    },
-}
-"""
 
 
 class SignedSmrTransaction:
