@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import time
 
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
@@ -38,10 +37,16 @@ async def main():
 
     # :!:>section_3
     # Default: 500_000_000
-    await faucet_client.faucet(sponsor.address())
-    await faucet_client.faucet(alice.address())
-    await faucet_client.faucet(bob.address())
-    time.sleep(5)
+    sponsor_fund_response = await faucet_client.faucet(sponsor.address())
+    alice_fund_response = await faucet_client.faucet(alice.address())
+    bob_fund_response = await faucet_client.faucet(bob.address())
+
+    # Wait for all faucet transactions to complete
+    await asyncio.gather(
+        rest_client.wait_for_transaction(sponsor_fund_response["Accepted"]),
+        rest_client.wait_for_transaction(alice_fund_response["Accepted"]),
+        rest_client.wait_for_transaction(bob_fund_response["Accepted"]),
+    )
 
     print("\n=== Initial Data ===")
     # :!:>section_4

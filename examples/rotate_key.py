@@ -1,5 +1,4 @@
 import asyncio
-import time
 from typing import List, cast
 
 import supra_sdk.asymmetric_crypto as asymmetric_crypto
@@ -133,8 +132,8 @@ async def main():
     bob = Account.generate()
 
     # Fund Alice's account, since we don't use Bob's
-    await faucet_client.faucet(alice.address())
-    time.sleep(2)
+    alice_resp = await faucet_client.faucet(alice.address())
+    await rest_client.wait_for_transaction(alice_resp["Accepted"])
 
     # Display formatted account info
     print(

@@ -3,7 +3,6 @@
 
 import asyncio
 import json
-import time
 
 from supra_sdk.account import Account
 from supra_sdk.async_client import FaucetClient, RestClient
@@ -31,8 +30,8 @@ async def main():
     print(f"Alice: {alice.address()}")
     print(f"Bob: {bob.address()}")
 
-    await faucet_client.faucet(alice.address())
-    time.sleep(5)
+    alice_resp = await faucet_client.faucet(alice.address())
+    await rest_client.wait_for_transaction(alice_resp["Accepted"])
 
     payload = EntryFunction.natural(
         "0x1::coin",
@@ -64,8 +63,8 @@ async def main():
     print(json.dumps(output, indent=4, sort_keys=True))
 
     print("\n=== Simulate after creating Bob's Account ===")
-    await faucet_client.faucet(bob.address())
-    time.sleep(5)
+    bob_resp = await faucet_client.faucet(bob.address())
+    await rest_client.wait_for_transaction(bob_resp["Accepted"])
 
     # Create another transaction with broken signature for second simulation
     transaction2 = await rest_client.create_bcs_transaction(

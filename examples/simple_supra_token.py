@@ -3,7 +3,6 @@
 
 import asyncio
 import json
-import time
 
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
@@ -76,10 +75,12 @@ async def main():
     print(f"Bob: {bob.address()}")
 
     # :!:>section_3
-    bob_fund = faucet_client.faucet(alice.address())
-    alice_fund = faucet_client.faucet(bob.address())  # <:!:section_3
-    await asyncio.gather(*[bob_fund, alice_fund])
-    time.sleep(5)
+    bob_fund_resp = await faucet_client.faucet(alice.address())
+    alice_fund_resp = await faucet_client.faucet(bob.address())
+    await asyncio.gather(
+        rest_client.wait_for_transaction(alice_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(bob_fund_resp["Accepted"]),
+    )
 
     print("\n=== Initial Coin Balances ===")
 

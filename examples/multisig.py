@@ -79,12 +79,17 @@ async def main(should_wait_input=True):
 
     # :!:>section_3
     print("\n=== Funding accounts ===")
-    alice_fund = faucet_client.faucet(alice.address())
-    bob_fund = faucet_client.faucet(bob.address())
-    chad_fund = faucet_client.faucet(chad.address())
-    multisig_fund = faucet_client.faucet(multisig_address)
-    time.sleep(5)
-    await asyncio.gather(*[alice_fund, bob_fund, chad_fund, multisig_fund])
+    alice_fund_resp = await faucet_client.faucet(alice.address())
+    bob_fund_resp = await faucet_client.faucet(bob.address())
+    chad_fund_resp = await faucet_client.faucet(chad.address())
+    multisig_fund_resp = await faucet_client.faucet(multisig_address)
+    await asyncio.gather(
+        rest_client.wait_for_transaction(alice_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(bob_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(chad_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(multisig_fund_resp["Accepted"]),
+    )
+
     alice_data = {
         "function": "0x1::coin::balance",
         "type_arguments": ["0x1::supra_coin::SupraCoin"],

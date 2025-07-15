@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 import asyncio
-import time
 
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
@@ -24,10 +23,12 @@ async def main():
     print(f"Alice: {alice.address()}")
     print(f"Bob: {bob.address()}")
 
-    bob_fund = faucet_client.faucet(bob.address())  # Default: 500_000_000
-    alice_fund = faucet_client.faucet(alice.address())  # Default: 500_000_000
-    await asyncio.gather(*[bob_fund, alice_fund])
-    time.sleep(5)
+    bob_fund_resp = await faucet_client.faucet(bob.address())
+    alice_fund_resp = await faucet_client.faucet(alice.address())
+    await asyncio.gather(
+        rest_client.wait_for_transaction(alice_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(bob_fund_resp["Accepted"]),
+    )
 
     print("\n=== Initial Coin Balances ===")
     alice_data = {
@@ -91,7 +92,6 @@ async def main():
     await rest_client.wait_for_transaction(txn_hash)
 
     minted_tokens = await token_client.tokens_minted_from_transaction(txn_hash)
-    time.sleep(5)
     assert len(minted_tokens) == 1
     token_addr = minted_tokens[0]
 

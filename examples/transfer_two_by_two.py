@@ -3,7 +3,6 @@
 
 import asyncio
 import os
-import time
 
 from supra_sdk.account import Account
 from supra_sdk.async_client import FaucetClient, RestClient
@@ -31,12 +30,16 @@ async def main():
     print(f"Carol: {carol.address()}")
     print(f"David: {david.address()}")
 
-    alice_fund = faucet_client.faucet(alice.address())
-    bob_fund = faucet_client.faucet(bob.address())
-    carol_fund = faucet_client.faucet(carol.address())
-    david_fund = faucet_client.faucet(david.address())
-    await asyncio.gather(*[alice_fund, bob_fund, carol_fund, david_fund])
-    time.sleep(5)
+    alice_fund_resp = await faucet_client.faucet(alice.address())
+    bob_fund_resp = await faucet_client.faucet(bob.address())
+    carol_fund_resp = await faucet_client.faucet(carol.address())
+    david_fund_resp = await faucet_client.faucet(david.address())
+    await asyncio.gather(
+        rest_client.wait_for_transaction(alice_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(bob_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(carol_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(david_fund_resp["Accepted"]),
+    )
 
     alice_data = {
         "function": "0x1::coin::balance",

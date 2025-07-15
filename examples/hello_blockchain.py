@@ -16,7 +16,6 @@ One method to do so is to use the CLI:
 import asyncio
 import os
 import sys
-import time
 from typing import Any, Dict, Optional
 
 from supra_sdk.account import Account
@@ -72,8 +71,8 @@ async def publish_contract(package_dir: str) -> AccountAddress:
     rest_client = HelloBlockchainClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
     # Default: 500_000_000
-    await faucet_client.faucet(contract_publisher.address())
-    time.sleep(5)
+    resp = await faucet_client.faucet(contract_publisher.address())
+    await rest_client.wait_for_transaction(resp["Accepted"])
 
     SupraCLIWrapper.compile_package(
         package_dir, {"hello_blockchain": contract_publisher.address()}
@@ -113,10 +112,12 @@ async def main(contract_address: AccountAddress):
     rest_client = HelloBlockchainClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
 
-    alice_fund = faucet_client.faucet(alice.address())  # Default: 500_000_000
-    bob_fund = faucet_client.faucet(bob.address())  # Default: 500_000_000
-    await asyncio.gather(*[alice_fund, bob_fund])
-    time.sleep(5)
+    alice_fund_resp = await faucet_client.faucet(alice.address())
+    bob_fund_resp = await faucet_client.faucet(bob.address())  # <:!:section_3
+    await asyncio.gather(
+        rest_client.wait_for_transaction(alice_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(bob_fund_resp["Accepted"]),
+    )
 
     alice_data = {
         "function": "0x1::coin::balance",

@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import time
 
 from supra_sdk import asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
 from supra_sdk.account import Account
@@ -51,10 +50,12 @@ async def main():
     print(f"Bob: {bob.address()}")
 
     # :!:>section_3
-    alice_fund = faucet_client.faucet(alice_address)  # Default: 500_000_000
-    bob_fund = faucet_client.faucet(bob.address())  # Default: 500_000_000
-    await asyncio.gather(*[alice_fund, bob_fund])
-    time.sleep(5)
+    bob_fund_resp = await faucet_client.faucet(bob.address())
+    alice_fund_resp = await faucet_client.faucet(alice_address)
+    await asyncio.gather(
+        rest_client.wait_for_transaction(alice_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(bob_fund_resp["Accepted"]),
+    )
 
     print("\n=== Initial Balances ===")
     # :!:>section_4

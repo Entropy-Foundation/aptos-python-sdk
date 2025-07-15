@@ -27,10 +27,12 @@ async def main():
     print(f"Bob: {bob.address()}")
 
     # Fund accounts
-    alice_fund = faucet_client.faucet(alice.address())
-    bob_fund = faucet_client.faucet(bob.address())
-    await asyncio.gather(*[alice_fund, bob_fund])
-    time.sleep(3)
+    alice_fund_resp = await faucet_client.faucet(alice.address())
+    bob_fund_resp = await faucet_client.faucet(bob.address())
+    await asyncio.gather(
+        rest_client.wait_for_transaction(alice_fund_resp["Accepted"]),
+        rest_client.wait_for_transaction(bob_fund_resp["Accepted"]),
+    )
 
     print("\n=== Initial Setup Complete ===")
     await show_balances(rest_client, alice, bob, "Initial Balances")
