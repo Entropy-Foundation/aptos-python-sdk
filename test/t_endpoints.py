@@ -25,8 +25,10 @@ from supra_sdk.transactions import (
     RawTransaction,
     SignedTransaction,
     SupraTransaction,
+    TransactionArgument,
     TransactionPayload,
 )
+from supra_sdk.type_tag import StructTag, TypeTag
 
 
 class AccountTest(unittest.IsolatedAsyncioTestCase):
@@ -49,32 +51,10 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
 
         self.client = RestClient(self.base_url, self.client_config)
         self.faucet_client = FaucetClient(self.faucet_url, self.client)
-        await self._fund_and_wait_for_account()
-
-    async def _fund_and_wait_for_account(self):
-        """Fund the account via faucet and wait for it to be available on-chain"""
-        await self.faucet_client.faucet(address=self.test_account.account_address)
-
-        max_retries = 30
-        retry_delay = 1.0  # seconds
-
-        for attempt in range(max_retries):
-            try:
-                _account_info = await self.client.account(
-                    account_address=self.test_account.account_address
-                )
-
-                return
-
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(retry_delay)
-                else:
-                    raise Exception(
-                        f"Account failed to become available after {
-                            max_retries
-                        } attempts: {str(e)}"
-                    )
+        faucet_response = await self.faucet_client.faucet(
+            address=self.test_account.account_address
+        )
+        await self.client.wait_for_transaction(faucet_response["Accepted"])
 
     async def test_chain_id(self):
         res = await self.client.chain_id()
@@ -111,6 +91,12 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
         res = await self.client.account_balance(data)
         self.assertEqual(res, 500000000)
 
+    async def test_account_sequesnce_number(self):
+        res = await self.client.account_sequence_number(
+            self.test_account.account_address
+        )
+        self.assertEqual(res, 0, "FAIL: Initial Seq no. of a new account must be 0")
+
     async def test_account_transaction(self):
         pagination = AccountTxPaginationWithOrder(count=99, start=0, ascending=True)
         res = await self.client.account_transaction(
@@ -120,6 +106,7 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(res, list, "FAIL: Transaction wrong data-type")
 
     async def test_account_automated_transaction(self):
+        # PPS Improvement: Create an automated txn then call the fn
         pagination = AccountAutomatedTxPagination(ascending=True)
         res = await self.client.account_automated_transactions(
             address=self.test_account.account_address,
@@ -170,6 +157,53 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
         """
         pass
 
+    async def test_aggregator_value_valid_data(self):
+        """Test aggregator_value with valid data - this tests the error handling for non-aggregator resources"""
+        # The coin balance is stored as a simple value, not an aggregator
+        # So this test validates that the method correctly identifies when aggregator structure is missing
+        resource_type = "0x1::coin::CoinStore<0x1::supra_coin::SupraCoin>"
+        aggregator_path = ["coin"]
+
+        with self.assertRaises(Exception) as cm:
+            await self.client.aggregator_value(
+                account_address=self.test_account.account_address,
+                resource_type=resource_type,
+                aggregator_path=aggregator_path,
+            )
+
+        error_msg = str(cm.exception)
+        # Should get "aggregator not found" because coin.value is a simple string, not an aggregator
+        self.assertIn("aggregator not found", error_msg)
+        # The actual coin value should be in the error
+        self.assertIn("500000000", error_msg)
+
+    async def test_aggregator_value_invalid_resource(self):
+        """Test aggregator_value with invalid resource type"""
+        invalid_resource = "0x1::nonexistent::Resource"
+        aggregator_path = ["coin", "value"]
+
+        with self.assertRaises(Exception) as cm:
+            await self.client.aggregator_value(
+                account_address=self.test_account.account_address,
+                resource_type=invalid_resource,
+                aggregator_path=aggregator_path,
+            )
+        self.assertIn("Information not available", str(cm.exception))
+
+    async def test_aggregator_value_invalid_path(self):
+        """Test aggregator_value with invalid aggregator path"""
+        # Use a valid resource but invalid path
+        resource_type = "0x1::account::Account"
+        invalid_path = ["nonexistent", "path"]
+
+        with self.assertRaises(Exception) as cm:
+            await self.client.aggregator_value(
+                account_address=self.test_account.account_address,
+                resource_type=resource_type,
+                aggregator_path=invalid_path,
+            )
+        self.assertIn("aggregator path not found", str(cm.exception))
+
     async def asyncTearDown(self):
         await self.client.close()
         await self.faucet_client.close()
@@ -203,18 +237,22 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
 
         # Make faucet trnsaction(Will make a test account)
         self.faucet_client = FaucetClient(self.faucet_url, self.client)
-        await self.faucet_client.faucet(
+        faucet_response_1 = await self.faucet_client.faucet(
             address=AccountAddress(bytes.fromhex(self.test_signer_address))
         )
-        await self.faucet_client.faucet(
+        await self.client.wait_for_transaction(faucet_response_1["Accepted"])
+        faucet_response_2 = await self.faucet_client.faucet(
             address=AccountAddress(bytes.fromhex(self.test_authenticator_address))
         )
-        await self.faucet_client.faucet(
+        await self.client.wait_for_transaction(faucet_response_2["Accepted"])
+        faucet_response_3 = await self.faucet_client.faucet(
             address=AccountAddress(bytes.fromhex(self.test_account_address))
         )
-        await self.faucet_client.faucet(address=self.test_account.account_address)
-
-        await asyncio.sleep(5)
+        await self.client.wait_for_transaction(faucet_response_3["Accepted"])
+        faucet_response_4 = await self.faucet_client.faucet(
+            address=self.test_account.account_address
+        )
+        await self.client.wait_for_transaction(faucet_response_4["Accepted"])
 
     async def test_estimate_gas_price(self):
         res = await self.client.estimate_gas_price()
@@ -263,7 +301,9 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
 
         res = await self.client.simulate_bcs_txn(transaction_data=bcs_txn)
         self.assertEqual(
-            res["status"], "Fail", "FAI: Status of simulated txn must be `Fail`"
+            res["status"],
+            "Success",
+            "FAIL: Status of proper simulated txn must be `Success`",
         )
 
     async def test_submit_txn(self):
@@ -278,6 +318,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
             account_info=account,
             chain_id=chain_id,
         )
+
         res = await self.client.submit_txn(transaction_data=move_txn)
         self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
 
@@ -297,15 +338,19 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
 
     async def test_create_bcs_transaction(self):
+        transaction_arguments = [
+            TransactionArgument(
+                self.test_signer_account.account_address, Serializer.struct
+            ),
+            TransactionArgument(1_000, Serializer.u64),
+        ]
+
         payload = TransactionPayload(
-            EntryFunction(
-                module=ModuleId(
-                    address=AccountAddress.from_str("0x1"),
-                    name="coin",
-                ),
-                function="transfer",
-                ty_args=[],
-                args=[],
+            EntryFunction.natural(
+                "0x1::coin",
+                "transfer",
+                [TypeTag(StructTag.from_str("0x1::supra_coin::SupraCoin"))],
+                transaction_arguments,
             )
         )
 
@@ -323,28 +368,30 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
 
         signed_txn = SignedTransaction(transaction=raw_txn, authenticator=authenticator)
 
-        supra_txn = SupraTransaction.create_move_transaction(signed_txn)
-        supra_serializer = Serializer()
-        supra_txn.serialize(supra_serializer)
-
-        res = await self.client.submit_bcs_txn(
-            transaction_data=supra_serializer.output()
-        )
+        res = await self.client.submit_bcs_txn(transaction_data=signed_txn)
+        await self.client.wait_for_transaction(res)
         self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
 
     async def test_create_bcs_signed_transaction(self):
         fresh_account = Account.generate()
-        await self.faucet_client.faucet(address=fresh_account.account_address)
-        await asyncio.sleep(2)
+        faucet_resp = await self.faucet_client.faucet(
+            address=fresh_account.account_address
+        )
+        await self.client.wait_for_transaction(faucet_resp["Accepted"])
+
+        transaction_arguments = [
+            TransactionArgument(
+                self.test_signer_account.account_address, Serializer.struct
+            ),
+            TransactionArgument(1_000, Serializer.u64),
+        ]
+
         payload = TransactionPayload(
-            EntryFunction(
-                module=ModuleId(
-                    address=AccountAddress.from_str("0x1"),
-                    name="coin",
-                ),
-                function="transfer",
-                ty_args=[],
-                args=[],
+            EntryFunction.natural(
+                "0x1::coin",
+                "transfer",
+                [TypeTag(StructTag.from_str("0x1::supra_coin::SupraCoin"))],
+                transaction_arguments,
             )
         )
 
@@ -358,6 +405,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         )
 
         res = await self.client.submit_bcs_txn(transaction_data=bcs_txn_bytes)
+        await self.client.wait_for_transaction(res)
         self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
 
     async def test_transaction_by_hash(self):
@@ -366,18 +414,267 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         )
         chain_id = await self.client.chain_id()
 
-        move_txn = self.create_move_txn(
+        move_txn = self.create_bcs_txn(
             sender=self.test_account,
             signer=self.test_account,
             account_info=account,
             chain_id=chain_id,
         )
-        hash = await self.client.submit_txn(transaction_data=move_txn)
+        hash = await self.client.submit_bcs_txn(transaction_data=move_txn)
+        await self.client.wait_for_transaction(hash)
 
-        time.sleep(5)
         res = await self.client.transaction_by_hash(hash)
         self.assertEqual(
             res["hash"], hash, "FAIL: Hash of cannot change after submission"
+        )
+
+    async def test_transaction_pending(self):
+        """Test transaction_pending method"""
+        # First create and submit a transaction
+        account = await self.client.account(
+            account_address=self.test_account.account_address
+        )
+        chain_id = await self.client.chain_id()
+
+        bcs_txn = self.create_bcs_txn(
+            sender=self.test_account,
+            signer=self.test_account,
+            account_info=account,
+            chain_id=chain_id,
+        )
+        txn_hash = await self.client.submit_bcs_txn(transaction_data=bcs_txn)
+
+        # Test with valid transaction hash - might be pending initially
+        is_pending = await self.client.transaction_pending(txn_hash)
+        self.assertIsInstance(
+            is_pending, bool, "FAIL: transaction_pending should return boolean"
+        )
+
+        # Wait a bit and check again - should eventually not be pending
+        await asyncio.sleep(2)
+        is_pending_later = await self.client.transaction_pending(txn_hash)
+        self.assertIsInstance(
+            is_pending_later, bool, "FAIL: transaction_pending should return boolean"
+        )
+
+        # Test with non-existent transaction hash
+        fake_hash = "0x" + "0" * 64
+        is_pending_fake = await self.client.transaction_pending(fake_hash)
+        self.assertTrue(
+            is_pending_fake,
+            "FAIL: Non-existent transaction should be considered pending",
+        )
+
+    async def test_wait_for_transaction(self):
+        """Test wait_for_transaction method"""
+        # Create and submit a transaction
+        account = await self.client.account(
+            account_address=self.test_account.account_address
+        )
+        chain_id = await self.client.chain_id()
+
+        move_txn = self.create_bcs_txn(
+            sender=self.test_account,
+            signer=self.test_account,
+            account_info=account,
+            chain_id=chain_id,
+        )
+        txn_hash = await self.client.submit_bcs_txn(transaction_data=move_txn)
+
+        # Wait for transaction should complete without error
+        await self.client.wait_for_transaction(txn_hash)
+
+        # After waiting, transaction should not be pending
+        is_pending = await self.client.transaction_pending(txn_hash)
+        self.assertFalse(
+            is_pending,
+            "FAIL: Transaction should not be pending after wait_for_transaction",
+        )
+
+        # Transaction should have success status
+        txn_data = await self.client.transaction_by_hash(txn_hash)
+        self.assertEqual(
+            txn_data.get("status"),
+            "Success",
+            "FAIL: Transaction should have Success status",
+        )
+
+    async def test_submit_and_wait_for_bcs_transaction(self):
+        """Test submit_and_wait_for_bcs_transaction method"""
+        # Create a BCS transaction
+        account = await self.client.account(
+            account_address=self.test_account.account_address
+        )
+        chain_id = await self.client.chain_id()
+
+        bcs_txn = self.create_bcs_txn(
+            sender=self.test_account,
+            signer=self.test_account,
+            account_info=account,
+            chain_id=chain_id,
+        )
+
+        # Submit and wait for the BCS transaction
+        result = await self.client.submit_and_wait_for_bcs_transaction(bcs_txn)
+
+        # Result should be a dictionary with transaction details
+        self.assertIsInstance(
+            result, dict, "FAIL: submit_and_wait_for_bcs_transaction should return dict"
+        )
+        self.assertIn("hash", result, "FAIL: Result should contain transaction hash")
+        self.assertIn(
+            "status", result, "FAIL: Result should contain transaction status"
+        )
+        self.assertEqual(
+            result.get("status"),
+            "Success",
+            "FAIL: Transaction should have Success status",
+        )
+
+        # Hash should be 66 characters (0x + 64 hex chars)
+        self.assertEqual(
+            len(result["hash"]), 66, "FAIL: Transaction hash should be 66 characters"
+        )
+
+        # Transaction should not be pending after submit_and_wait
+        is_pending = await self.client.transaction_pending(result["hash"])
+        self.assertFalse(
+            is_pending, "FAIL: Transaction should not be pending after submit_and_wait"
+        )
+
+    async def test_bcs_transfer(self):
+        """Test bcs_transfer method"""
+        # Create a fresh account to transfer to
+        recipient_account = Account.generate()
+        resp = await self.faucet_client.faucet(
+            address=recipient_account.account_address
+        )
+        await self.client.wait_for_transaction(resp["Accepted"])
+
+        # Get initial balances
+        sender_balance_data = {
+            "function": "0x1::coin::balance",
+            "type_arguments": ["0x1::supra_coin::SupraCoin"],
+            "arguments": [str(self.test_account.account_address)],
+        }
+        initial_sender_balance = await self.client.account_balance(sender_balance_data)
+
+        recipient_balance_data = {
+            "function": "0x1::coin::balance",
+            "type_arguments": ["0x1::supra_coin::SupraCoin"],
+            "arguments": [str(recipient_account.account_address)],
+        }
+        initial_recipient_balance = await self.client.account_balance(
+            recipient_balance_data
+        )
+
+        # Transfer amount
+        transfer_amount = 10_000_000
+
+        # Perform transfer
+        txn_hash = await self.client.bcs_transfer(
+            sender=self.test_account,
+            recipient=recipient_account.account_address,
+            amount=transfer_amount,
+        )
+
+        # Verify transaction hash format
+        self.assertEqual(
+            len(txn_hash), 66, "FAIL: Transaction hash should be 66 characters"
+        )
+        self.assertTrue(
+            txn_hash.startswith("0x"), "FAIL: Transaction hash should start with 0x"
+        )
+
+        # Wait for transaction completion
+        await self.client.wait_for_transaction(txn_hash)
+
+        # Verify balances changed correctly
+        final_sender_balance = await self.client.account_balance(sender_balance_data)
+        final_recipient_balance = await self.client.account_balance(
+            recipient_balance_data
+        )
+
+        # Sender should have less (transfer amount + gas fees)
+        self.assertLess(
+            final_sender_balance,
+            initial_sender_balance,
+            "FAIL: Sender balance should decrease",
+        )
+
+        # Recipient should have exactly transfer_amount more
+        self.assertEqual(
+            final_recipient_balance,
+            initial_recipient_balance + transfer_amount,
+            "FAIL: Recipient should receive exact transfer amount",
+        )
+
+    async def test_transfer_coins(self):
+        """Test transfer_coins method with SupraCoin"""
+        # Create a fresh account to transfer to
+        recipient_account = Account.generate()
+        resp = await self.faucet_client.faucet(
+            address=recipient_account.account_address
+        )
+        await self.client.wait_for_transaction(resp["Accepted"])
+
+        # Get initial balances
+        sender_balance_data = {
+            "function": "0x1::coin::balance",
+            "type_arguments": ["0x1::supra_coin::SupraCoin"],
+            "arguments": [str(self.test_account.account_address)],
+        }
+        initial_sender_balance = await self.client.account_balance(sender_balance_data)
+
+        recipient_balance_data = {
+            "function": "0x1::coin::balance",
+            "type_arguments": ["0x1::supra_coin::SupraCoin"],
+            "arguments": [str(recipient_account.account_address)],
+        }
+        initial_recipient_balance = await self.client.account_balance(
+            recipient_balance_data
+        )
+
+        # Transfer amount
+        transfer_amount = 50_000_000
+
+        # Perform transfer using transfer_coins
+        txn_hash = await self.client.transfer_coins(
+            sender=self.test_account,
+            recipient=recipient_account.account_address,
+            coin_type="0x1::supra_coin::SupraCoin",
+            amount=transfer_amount,
+        )
+
+        # Verify transaction hash format
+        self.assertEqual(
+            len(txn_hash), 66, "FAIL: Transaction hash should be 66 characters"
+        )
+        self.assertTrue(
+            txn_hash.startswith("0x"), "FAIL: Transaction hash should start with 0x"
+        )
+
+        # Wait for transaction completion
+        await self.client.wait_for_transaction(txn_hash)
+
+        # Verify balances changed correctly
+        final_sender_balance = await self.client.account_balance(sender_balance_data)
+        final_recipient_balance = await self.client.account_balance(
+            recipient_balance_data
+        )
+
+        # Sender should have less (transfer amount + gas fees)
+        self.assertLess(
+            final_sender_balance,
+            initial_sender_balance,
+            "FAIL: Sender balance should decrease",
+        )
+
+        # Recipient should have exactly transfer_amount more
+        self.assertEqual(
+            final_recipient_balance,
+            initial_recipient_balance + transfer_amount,
+            "FAIL: Recipient should receive exact transfer amount",
         )
 
     def create_move_txn(
@@ -442,15 +739,19 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
     ) -> bytes:
         serializer = Serializer()
 
+        transaction_arguments = [
+            TransactionArgument(
+                self.test_signer_account.account_address, Serializer.struct
+            ),
+            TransactionArgument(1_000, Serializer.u64),
+        ]
+
         payload = TransactionPayload(
-            EntryFunction(
-                module=ModuleId(
-                    address=AccountAddress.from_str("0x1"),
-                    name="coin",
-                ),
-                function="transfer",
-                ty_args=[],
-                args=[],
+            EntryFunction.natural(
+                "0x1::coin",
+                "transfer",
+                [TypeTag(StructTag.from_str("0x1::supra_coin::SupraCoin"))],
+                transaction_arguments,
             )
         )
 
@@ -588,9 +889,10 @@ class TablesTest(unittest.IsolatedAsyncioTestCase):
 
         # Make faucet trnsaction(Will make a test account)
         self.faucet_client = FaucetClient(self.faucet_url, self.client)
-        await self.faucet_client.faucet(
+        faucet_response = await self.faucet_client.faucet(
             address=AccountAddress(bytes.fromhex(self.test_address))
         )
+        await self.client.wait_for_transaction(faucet_response["Accepted"])
 
     async def test_items_by_key(self):
         tir = TableItemRequest(

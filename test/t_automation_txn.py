@@ -99,7 +99,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
                 enable_wait_for_transaction=True,
             )
 
-            print(f"✓ AUTOMATION REGISTRATION SUCCESSFUL: {result}")
+            print(f"✓ Automation registration successful: {result}")
             task_id = 1
 
         except Exception as e:
@@ -184,7 +184,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
                 enable_wait_for_transaction=True,
             )
 
-            print(f"✓ AUTOMATION REGISTRATION SUCCESSFUL: {result}")
+            print(f"✓ Automation registration successful [simulation]: {result}")
             task_id = 1
 
         except Exception as e:
