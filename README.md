@@ -19,48 +19,61 @@ curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 ```
 
-## Unit testing
+## Run and Test SDK
+
+Must have access to localnet (smr-moonshot)
+
+```bash
+cd remote_env/
+make killall
+./local_test.sh -n -t daemon
+```
+
+> Unit tests
 
 ```bash
 make test
 ```
 
-## E2E testing and Using the Supra CLI
-
-- Download and install the [Supra CLI](https://supra.dev/tools/supra-cli/use-cli/running-a-local-network).
-- Set the environment variable `SUPRA_CLI_PATH` to the full path of the CLI.
-- Retrieve the [Supra Core Github Repo](https://github.com/supra-labs/supra-core) (git clone https://github.com/supra-labs/supra-core)
-- Set the environment variable `SUPRA_CORE_REPO` to the full path of the Repository.
-- `make integration_test`
-
-You can do this a bit more manually by:
-
-First, run a local testnet (run this from the root of supra-core):
+> Test coverage
 
 ```bash
-supra node run-local-testnet --force-restart --assume-yes --with-indexer-api
+make test-coverage
 ```
 
-Next, tell the end-to-end tests to talk to this locally running testnet:
-
-```bash
-export SUPRA_CORE_REPO="/path/to/repo"
-export SUPRA_FAUCET_URL="http://127.0.0.1:8081"
-export SUPRA_INDEXER_URL="http://127.0.0.1:8090/v1/graphql"
-export SUPRA_NODE_URL="http://127.0.0.1:8080/v1"
-```
-
-Finally run the tests:
+> Run examples
 
 ```bash
 make examples
 ```
 
-Integration Testing Using the Supra CLI:
+<!-- ## E2E testing and Using the Supra CLI -->
+<!---->
+<!-- - Download and install the [Supra CLI](https://supra.dev/tools/supra-cli/use-cli/running-a-local-network). -->
+<!-- - Set the environment variable `SUPRA_CLI_PATH` to the full path of the CLI. -->
+<!-- - Retrieve the [Supra Core Github Repo](https://github.com/supra-labs/supra-core) (git clone https://github.com/supra-labs/supra-core) -->
+<!-- - Set the environment variable `SUPRA_CORE_REPO` to the full path of the Repository. -->
+<!-- - `make integration_test` -->
+<!---->
 
-```bash
-make integration_test
-```
+<!-- You can do this a bit more manually by: -->
+<!---->
+<!-- First, run a local testnet (run this from the root of supra-core): -->
+<!---->
+<!-- ```bash -->
+<!-- supra node run-local-testnet --force-restart --assume-yes --with-indexer-api -->
+<!-- ``` -->
+
+<!-- Next, tell the end-to-end tests to talk to this locally running testnet: -->
+<!---->
+<!-- ```bash -->
+<!-- export SUPRA_CORE_REPO="/path/to/repo" -->
+<!-- export SUPRA_FAUCET_URL="http://127.0.0.1:8081" -->
+<!-- export SUPRA_INDEXER_URL="http://127.0.0.1:8090/v1/graphql" -->
+<!-- export SUPRA_NODE_URL="http://127.0.0.1:8080/v1" -->
+<!-- ``` -->
+<!---->
+<!-- Finally run the tests: -->
 
 > [!NOTE]
 > The Python SDK does not require the Indexer, if you would prefer to test without it, unset or do not set the environmental variable `SUPRA_INDEXER_URL` and exclude `--with-indexer-api` from running the supra node software.
