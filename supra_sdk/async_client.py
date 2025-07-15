@@ -586,7 +586,7 @@ class RestClient:
         Submits a signed transaction for execution.
 
         Args:
-            transaction_data (Union[Dict[str, Any], bytes]): The transaction payload.
+            transaction_data (Dict[str, Any]): The transaction payload.
 
         Returns:
             Dict[str, Any]: JSON response from the API.
@@ -607,7 +607,7 @@ class RestClient:
         Simulates a transaction without submitting it to the chain.
 
         Args:
-            transaction_data (Union[Dict[str, Any], bytes]): The transaction payload.
+            transaction_data (Dict[str, Any]): The transaction payload.
 
         Returns:
             Dict[str, Any]: JSON simulation result.
