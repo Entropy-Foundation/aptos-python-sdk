@@ -12,7 +12,8 @@ import hashlib
 import time
 import traceback
 import unittest
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, cast
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union,
+                    cast)
 
 from typing_extensions import Protocol
 
@@ -21,15 +22,10 @@ if TYPE_CHECKING:
 
 from . import asymmetric_crypto, ed25519, secp256k1_ecdsa
 from .account_address import AccountAddress
-from .authenticator import (
-    AccountAuthenticator,
-    Authenticator,
-    Ed25519Authenticator,
-    FeePayerAuthenticator,
-    MultiAgentAuthenticator,
-    SingleKeyAuthenticator,
-    SingleSenderAuthenticator,
-)
+from .authenticator import (AccountAuthenticator, Authenticator,
+                            Ed25519Authenticator, FeePayerAuthenticator,
+                            MultiAgentAuthenticator, SingleKeyAuthenticator,
+                            SingleSenderAuthenticator)
 from .bcs import Deserializable, Deserializer, Serializable, Serializer
 from .type_tag import StructTag, TypeTag
 
@@ -1263,12 +1259,8 @@ class Test(unittest.TestCase):
 
 class AutomationTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        from supra_sdk.async_client import (
-            Account,
-            ClientConfig,
-            FaucetClient,
-            RestClient,
-        )
+        from supra_sdk.async_client import (Account, ClientConfig,
+                                            FaucetClient, RestClient)
 
         self.base_url = "http://localhost:27001"
         self.faucet_url = "http://localhost:27001"
