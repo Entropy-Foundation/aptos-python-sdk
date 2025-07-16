@@ -6,11 +6,7 @@ import os
 
 from supra_sdk.account import Account
 from supra_sdk.async_client import FaucetClient, RestClient
-from supra_sdk.transactions import (
-    Script,
-    ScriptArgument,
-    TransactionPayload,
-)
+from supra_sdk.transactions import Script, ScriptArgument, TransactionPayload
 
 from .common import FAUCET_URL, NODE_URL
 

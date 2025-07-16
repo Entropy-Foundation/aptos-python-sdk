@@ -39,9 +39,9 @@ class TableItemRequest:
         key (Optional[str]): The key to fetch from the table.
     """
 
-    key_type: Optional[str] = None
-    value_type: Optional[str] = None
-    key: Optional[Any] = None
+    key_type: str
+    value_type: str
+    key: Any
 
     def to_params(self) -> Dict[str, Any]:
         """
@@ -52,24 +52,21 @@ class TableItemRequest:
         """
 
         params: Dict[str, Any] = {}
-        if self.key_type:
-            params["key_type"] = self.key_type
-        if self.value_type:
-            params["value_type"] = self.value_type
-        if self.key:
-            params["key"] = self.key
+        params["key_type"] = self.key_type
+        params["value_type"] = self.value_type
+        params["key"] = self.key
         return params
 
 
 @dataclass
-class AccountCoinTxPaginationWithOrder:
+class PaginationWithOrder:
     """
-    Represents pagination options for coin transactions in an account, including ordering.
+    Generic pagination parameters with ordering.
 
     Attributes:
-        count (Optional[int]): Maximum number of items to return. Default is 20.
-        start (Optional[int]): The cursor (exclusive) that the search should start from.
-        ascending (bool): Flag indicating order of lookup. Defaults to False (descending).
+        count: Maximum number of items to return.
+        start: Starting point or cursor for pagination.
+        ascending: If True, results are in ascending order.
     """
 
     count: Optional[int] = None
@@ -90,6 +87,14 @@ class AccountCoinTxPaginationWithOrder:
             params["start"] = self.start
         params["ascending"] = str(self.ascending).lower()
         return params
+
+
+class AccountTxPaginationWithOrder(PaginationWithOrder):
+    """Pagination parameters for account transactions."""
+
+
+class AccountCoinTxPaginationWithOrder(PaginationWithOrder):
+    """Pagination parameters for account coin transactions."""
 
 
 @dataclass
@@ -155,39 +160,6 @@ class AccountAutomatedTxPagination:
         return params
 
 
-@dataclass
-class AccountTxPaginationWithOrder:
-    """
-    Pagination parameters for account transactions.
-
-    Attributes:
-        count: Maximum number of items to return. Default is 20.
-        start: Starting sequence number. If provided, return :count of transactions
-               starting from this sequence number (inclusive) in the specified order.
-        ascending: Flag indicating order of lookup. Defaults to false; i.e. the
-                  transactions are returned in descending order by sequence number.
-    """
-
-    count: Optional[int] = None
-    start: Optional[int] = None
-    ascending: bool = False
-
-    def to_params(self) -> Dict[str, Any]:
-        """
-        Converts the pagination configuration to a dictionary of query parameters.
-
-        Returns:
-            Dict[str, Any]: Dictionary of parameters for HTTP request.
-        """
-        params: Dict[str, Any] = {}
-        if self.count is not None:
-            params["count"] = self.count
-        if self.start is not None:
-            params["start"] = self.start
-        params["ascending"] = str(self.ascending).lower()
-        return params
-
-
 class EventQuery:
     """
     Defines query parameters for fetching events over a block range.
@@ -212,7 +184,7 @@ class EventQuery:
             Dict[str, Any]: Dictionary of parameters for HTTP request.
         """
         params: Dict[str, Any] = {}
-        if self.start_height is not None:
+        if self.start_height:
             params["start_height"] = self.start_height
         if self.end_height is not None:
             params["end_height"] = self.end_height

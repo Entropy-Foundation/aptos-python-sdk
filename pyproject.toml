@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "supra-sdk"
-version = "0.9.1"
+version = "0.1.0"
 description = "Supra SDK"
 authors = ["Supra Labs <opensource@supralabs.com>"]
 license = "Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/supra-labs/supra-core"
-homepage = "https://github.com/supra-labs/supra-core/tree/main/ecosystem/python/sdk"
+repository = "https://github.com/Entropy-Foundation/supra-python-sdk"
+homepage = "https://github.com/Entropy-Foundation/supra-python-sdk"
 keywords = ["web3", "sdk", "supra", "blockchain"]
 
 [tool.setuptools.package-data]

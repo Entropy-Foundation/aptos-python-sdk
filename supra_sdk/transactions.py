@@ -7,12 +7,17 @@ This translates Supra transactions to and from BCS for signing and submitting to
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import time
+import traceback
 import unittest
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, cast
 
 from typing_extensions import Protocol
+
+if TYPE_CHECKING:
+    pass
 
 from . import asymmetric_crypto, ed25519, secp256k1_ecdsa
 from .account_address import AccountAddress
@@ -232,17 +237,7 @@ class TransactionPayload:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert payload to dictionary format for SMR transactions"""
-        if self.variant in [
-            TransactionPayload.SCRIPT,
-            TransactionPayload.MODULE_BUNDLE,
-            TransactionPayload.SCRIPT_FUNCTION,
-            TransactionPayload.MULTISIG,
-            TransactionPayload.AUTOMATION,
-        ]:
-            # return {"variant": self.variant, "value": self.value.to_dict()}
-            return self.value.to_dict()
-        else:
-            raise Exception("Invalid payload type for conversion")
+        return self.value.to_dict()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TransactionPayload):
@@ -661,93 +656,6 @@ class SignedTransaction:
     def serialize(self, serializer: Serializer) -> None:
         self.transaction.serialize(serializer)
         self.authenticator.serialize(serializer)
-
-
-@dataclass
-class AutomatedTransaction:
-    raw_txn: RawTransaction
-    authenticator: Authenticator
-    block_height: int
-    _raw_txn_size: Optional[int] = field(default=None, init=False, repr=False)
-    _hash: Optional[bytes] = field(default=None, init=False, repr=False)
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, AutomatedTransaction):
-            return False
-        else:
-            return (
-                self.raw_txn == other.raw_txn
-                and self.authenticator == other.authenticator
-                and self.block_height == other.block_height
-            )
-
-    def __str__(self) -> str:
-        return f"""
-            AutomatedTransaction:
-            raw_txn: {self.raw_txn}
-            authenticator: {self.authenticator.__str__()}
-        """
-
-    def sender(self) -> AccountAddress:
-        return self.raw_txn.sender
-
-    def sequence_number(self) -> int:
-        return self.raw_txn.sequence_number
-
-    def chain_id(self) -> int:
-        return self.raw_txn.chain_id
-
-    def payload(self) -> TransactionPayload:
-        return self.raw_txn.payload
-
-    def max_gas_amount(self) -> int:
-        return self.raw_txn.max_gas_amount
-
-    def gas_unit_price(self) -> int:
-        return self.raw_txn.gas_unit_price
-
-    def expiration_timestamps_secs(self) -> int:
-        return self.raw_txn.expiration_timestamps_secs
-
-    def duration_since(self, base_timestamp: int) -> Optional[int]:
-        expiration = self.expiration_timestamps_secs()
-        if expiration > base_timestamp:
-            return expiration - base_timestamp
-        return None
-
-    @property
-    def raw_txn_bytes_len(self) -> int:
-        if self._raw_txn_size is None:
-            serializer = Serializer()
-            self.raw_txn.serialize(serializer)
-            self._raw_txn_size = len(serializer.output())
-        return self._raw_txn_size
-
-    def txn_bytes_len(self):
-        serializer = Serializer()
-        self.authenticator.serialize(Serializer)
-        auth_size = len(serializer.output)
-        return self.raw_txn_bytes_len() + auth_size
-
-    @property
-    def hash(self) -> bytes:
-        if self._hash is None:
-            serializer = Serializer()
-            self.serialize(serializer)
-            self._hash = hashlib.sha3_256(serializer.output()).digest()
-        return self._hash
-
-    def serialize(self, s: Serializer) -> None:
-        self.raw_txn.serialize(s)
-        self.authenticator.serialize(s)
-        s.u64(self.block_height)
-
-    @staticmethod
-    def deserialize(deserializer: Deserializer) -> "AutomatedTransaction":
-        raw_txn = RawTransaction.deserialize(deserializer)
-        authenticator = Authenticator.deserialize(deserializer)
-        block_height = deserializer.u64()
-        return AutomatedTransaction(raw_txn, authenticator, block_height)
 
 
 class SupraTransaction:
@@ -1377,3 +1285,233 @@ class Test(unittest.TestCase):
             isinstance(signed_txn.authenticator.authenticator, FeePayerAuthenticator)
         )
         self.assertTrue(signed_txn.verify())
+
+
+class AutomationTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        from supra_sdk.async_client import (
+            Account,
+            ClientConfig,
+            FaucetClient,
+            RestClient,
+        )
+
+        self.base_url = "http://localhost:27001"
+        self.faucet_url = "http://localhost:27001"
+        self.sender = Account.generate()
+
+        client_config = ClientConfig(
+            expiration_ttl=600,
+            gas_unit_price=100,
+            max_gas_amount=1000000,
+        )
+        self.client = RestClient(self.base_url, client_config)
+        self.faucet = FaucetClient(self.faucet_url, self.client)
+        await self._fund_and_wait_for_account()
+
+    async def _fund_and_wait_for_account(self):
+        """Fund the account via faucet and wait for it to be available on-chain"""
+        await self.faucet.faucet(address=self.sender.account_address)
+
+        max_retries = 30
+        retry_delay = 1.0  # seconds
+
+        for attempt in range(max_retries):
+            try:
+                _account_info = await self.client.account(
+                    account_address=self.sender.account_address
+                )
+                return
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                else:
+                    raise Exception(
+                        f"Account failed to become available after {
+                            max_retries
+                        } attempts: {str(e)}"
+                    )
+
+    async def test_automation_transactions_submission(self):
+        """Test all automation transaction methods"""
+        await asyncio.sleep(3)
+
+        # Get account info like TypeScript
+        account_info = await self.client.account(self.sender.address())
+
+        try:
+            receiver_address = self.sender.address()
+            receiver_bytes = receiver_address.address
+
+            amount_serializer = Serializer()
+            amount_serializer.u64(1000)
+            amount_bytes = amount_serializer.output()
+
+            chain_id = await self.client.chain_id()
+
+            print("Creating automation transaction...")
+
+            # Create serialized automation transaction EXACTLY like TypeScript
+            automation_raw_transaction = self.client.create_automation_registration_tx_payload_raw_tx_object(
+                sender_addr=self.sender.address(),
+                sender_sequence_number=account_info["sequence_number"],
+                module_addr="0000000000000000000000000000000000000000000000000000000000000001",
+                module_name="supra_account",
+                function_name="transfer",
+                max_gas_amount=1000000,
+                function_type_args=[],
+                function_args=[receiver_bytes, amount_bytes],
+                automation_max_gas_amount=5000,
+                automation_gas_price_cap=100,
+                automation_fee_cap_for_epoch=100000000,  # Same as TypeScript
+                automation_expiration_timestamp_secs=int(time.time()) + 500,
+                automation_aux_data=[],
+                chain_id=chain_id,
+            )
+
+            print("✓ Automation payload created successfully!")
+
+            # Send using serialized raw transaction like TypeScript
+            await asyncio.sleep(1)
+            result = await self.client.send_automation_tx_using_raw_transaction(
+                sender=self.sender,
+                raw_transaction=automation_raw_transaction,
+                enable_transaction_simulation=False,
+                enable_wait_for_transaction=True,
+            )
+
+            print(f"✓ Automation registration successful: {result}")
+            task_id = 1
+
+        except Exception as e:
+            print(f"✗ AUTOMATION REGISTRATION FAILED: {e}")
+            task_id = 1
+            traceback.print_exc()
+
+        await asyncio.sleep(1)
+
+        # Test 2: Cancel automation task
+        print("\n=== Testing cancel_automation_task ===")
+
+        # Test actual cancellation
+        print("Testing actual cancellation...")
+        try:
+            cancel_result = await self.client.cancel_automation_task(
+                sender=self.sender, task_index=task_id, simulate=False
+            )
+            print(f"✓ Cancellation successful: {cancel_result}")
+        except Exception as e:
+            print(f"✗ Cancellation failed: {e}")
+
+        await asyncio.sleep(1)
+
+        # Test 3: Stop automation tasks
+        print("\n=== Testing stop_automation_tasks ===")
+
+        print("Testing actual stop tasks...")
+        try:
+            stop_result = await self.client.stop_automation_tasks(
+                sender=self.sender,
+                task_indexes=[1],
+                simulate=False,
+            )
+            print(f"✓ Stop tasks successful: {stop_result}")
+        except Exception as e:
+            print(f"✗ Stop tasks failed: {e}")
+
+        print("\n=== All tests completed ===")
+
+    async def test_automation_transactions_simulation(self):
+        """Test all automation transaction methods"""
+        await asyncio.sleep(3)
+        account_info = await self.client.account(self.sender.address())
+
+        try:
+            receiver_address = self.sender.address()
+            receiver_bytes = receiver_address.address
+
+            amount_serializer = Serializer()
+            amount_serializer.u64(1000)
+            amount_bytes = amount_serializer.output()
+
+            chain_id = await self.client.chain_id()
+
+            print("Creating automation transaction...")
+
+            # Create serialized automation transaction EXACTLY like TypeScript
+            automation_raw_transaction = self.client.create_automation_registration_tx_payload_raw_tx_object(
+                sender_addr=self.sender.address(),
+                sender_sequence_number=account_info["sequence_number"],
+                module_addr="0000000000000000000000000000000000000000000000000000000000000001",
+                module_name="supra_account",
+                function_name="transfer",
+                max_gas_amount=1000000,
+                function_type_args=[],
+                function_args=[receiver_bytes, amount_bytes],
+                automation_max_gas_amount=5000,
+                automation_gas_price_cap=100,
+                automation_fee_cap_for_epoch=100000000,  # Same as TypeScript
+                automation_expiration_timestamp_secs=int(time.time()) + 500,
+                automation_aux_data=[],
+                chain_id=chain_id,
+            )
+
+            print("✓ Automation payload created successfully!")
+
+            # Send using serialized raw transaction like TypeScript
+            await asyncio.sleep(2)
+            result = await self.client.send_automation_tx_using_raw_transaction(
+                sender=self.sender,
+                raw_transaction=automation_raw_transaction,
+                enable_transaction_simulation=False,
+                enable_wait_for_transaction=True,
+            )
+
+            print(f"✓ Automation registration successful [simulation]: {result}")
+            task_id = 1
+
+        except Exception as e:
+            print(f"✗ AUTOMATION REGISTRATION FAILED: {e}")
+            task_id = 1
+            traceback.print_exc()
+
+        # Wait a bit
+        await asyncio.sleep(1)
+
+        # Test 2: Cancel automation task
+        print("\n=== Testing cancel_automation_task ===")
+
+        # Test simulation first
+        print("Testing cancellation simulation...")
+        try:
+            sim_result = await self.client.cancel_automation_task(
+                sender=self.sender, task_index=task_id, simulate=True
+            )
+            print(f"✓ Cancellation simulation successful: {sim_result['hash']}")
+        except Exception as e:
+            print(f"✗ Cancellation simulation failed: {e}")
+
+        # Wait a bit
+        await asyncio.sleep(1)
+
+        # Test 3: Stop automation tasks
+        print("\n=== Testing stop_automation_tasks ===")
+
+        # Test simulation first
+        print("Testing stop tasks simulation...")
+        try:
+            sim_result = await self.client.stop_automation_tasks(
+                sender=self.sender,
+                task_indexes=[1],
+                simulate=True,
+            )
+            print(f"✓ Stop tasks simulation successful: {sim_result['hash']}")
+        except Exception as e:
+            print(f"✗ Stop tasks simulation failed: {e}")
+
+        print("\n=== All tests completed ===")
+
+    async def asyncTearDown(self):
+        await self.client.close()
+        await self.faucet.close()

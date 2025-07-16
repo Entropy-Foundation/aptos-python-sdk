@@ -46,7 +46,7 @@ class AccountAddress:
         """
         Represent an account address in a way that is compliant with the v1 address
         standard. The standard is defined as part of AIP-40, read more here:
-        https://github.com/supra-foundation/AIPs/blob/main/aips/aip-40.md
+        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md
 
         In short, all special addresses SHOULD be represented in SHORT form, e.g.
 
@@ -78,7 +78,7 @@ class AccountAddress:
         the addresses in the range from `0x0` to `0xf` (inclusive) are special.
 
         For more details see the v1 address standard defined as part of AIP-40:
-        https://github.com/supra-foundation/AIPs/blob/main/aips/aip-40.md
+        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md
         """
         return all(b == 0 for b in self.address[:-1]) and self.address[-1] < 0b10000
 
@@ -104,7 +104,7 @@ class AccountAddress:
         - Any address without a leading 0x.
 
         Learn more about the different address formats by reading AIP-40:
-        https://github.com/supra-foundation/AIPs/blob/main/aips/aip-40.md.
+        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md.
 
         Parameters:
         - address (str): A hex string representing an account address.
@@ -163,7 +163,7 @@ class AccountAddress:
         - Padding zeroes are allowed, e.g., 0x0123 is valid.
 
         Learn more about the different address formats by reading AIP-40:
-        https://github.com/supra-foundation/AIPs/blob/main/aips/aip-40.md.
+        https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md.
 
         Parameters:
         - address (str): A hex string representing an account address.

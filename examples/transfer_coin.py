@@ -14,9 +14,9 @@ async def main():
     rest_client = RestClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)  # <:!:section_1
     if INDEXER_URL and INDEXER_URL != "none":
-        indexer_client = IndexerClient(INDEXER_URL)
+        IndexerClient(INDEXER_URL)
     else:
-        indexer_client = None
+        pass
 
     # :!:>section_2
     alice = Account.generate()
