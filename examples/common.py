@@ -13,9 +13,5 @@ FAUCET_URL = os.getenv(
     "SUPRA_FAUCET_URL",
     "http://localhost:27001",
 )
-INDEXER_URL = os.getenv(
-    "SUPRA_INDEXER_URL",
-    "https://api.devnet.supralabs.com/v1/graphql",
-)
 NODE_URL = os.getenv("SUPRA_NODE_URL", "http://localhost:27000")
 # <:!:section_1

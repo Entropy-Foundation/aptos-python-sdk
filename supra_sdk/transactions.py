@@ -666,19 +666,12 @@ class SupraTransaction:
     value: Union[SignedSmrTransaction, SignedTransaction]
 
     def __init__(self, transaction: Union[SignedSmrTransaction, SignedTransaction]):
-        if (
-            hasattr(transaction, "__class__")
-            and transaction.__class__.__name__ == "SignedSmrTransaction"
-        ):
+        if isinstance(transaction, SignedSmrTransaction):
             self.variant = SupraTransaction.SMR
-        elif (
-            hasattr(transaction, "__class__")
-            and transaction.__class__.__name__ == "SignedTransaction"
-        ):
+        elif isinstance(transaction, SignedTransaction):
             self.variant = SupraTransaction.MOVE
         else:
             raise Exception("Invalid transaction type for SupraTransaction")
-
         self.value = transaction
 
     @staticmethod
@@ -694,11 +687,6 @@ class SupraTransaction:
     ) -> "SupraTransaction":
         """Create a SupraTransaction with SMR variant"""
         return SupraTransaction(signed_smr_transaction)
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, SupraTransaction):
-            return NotImplemented
-        return self.variant == other.variant and self.value == other.value
 
     def __str__(self) -> str:
         variant_name = "SMR" if self.variant == SupraTransaction.SMR else "MOVE"
@@ -771,7 +759,6 @@ class SignerData:
         )
 
     def serialize(self, serializer: Serializer) -> None:
-        # Assuming Ed25519 keys and signature
         serializer.fixed_bytes(self.signer)
         serializer.fixed_bytes(self.signature)
 
@@ -837,7 +824,6 @@ class SmrTransactionHeader:
 
     def serialize(self, serializer: Serializer) -> None:
         serializer.u64(self.chain_id)
-        # Assuming SmrTimestamp is u64
         serializer.u64(self.expiration_timestamp)
         self.sender.serialize(serializer)
         serializer.u64(self.sequence_number)
@@ -919,10 +905,6 @@ class MoveTransaction:
 
 
 class AutomationRegistrationParamsV1Data:
-    """
-    Python equivalent of TypeScript's AutomationRegistrationParamsV1Data
-    """
-
     def __init__(
         self,
         automated_function: EntryFunction,
@@ -967,10 +949,6 @@ class AutomationRegistrationParamsV1Data:
 
 
 class AutomationRegistrationParamsV1:
-    """
-    Python equivalent of TypeScript's AutomationRegistrationParamsV1
-    """
-
     def __init__(self, value: AutomationRegistrationParamsV1Data):
         self.value = value
 
@@ -989,10 +967,6 @@ class AutomationRegistrationParamsV1:
 
 
 class TransactionPayloadAutomationRegistration:
-    """
-    Python equivalent of TypeScript's TransactionPayloadAutomationRegistration
-    """
-
     def __init__(self, value: AutomationRegistrationParamsV1):
         self.value = value
 

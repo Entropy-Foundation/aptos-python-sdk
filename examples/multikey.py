@@ -7,7 +7,7 @@ from supra_sdk import asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
 from supra_sdk.asymmetric_crypto_wrapper import MultiSignature, Signature
-from supra_sdk.async_client import FaucetClient, IndexerClient, RestClient
+from supra_sdk.async_client import FaucetClient, RestClient
 from supra_sdk.authenticator import AccountAuthenticator, MultiKeyAuthenticator
 from supra_sdk.bcs import Serializer
 from supra_sdk.transactions import (
@@ -18,17 +18,13 @@ from supra_sdk.transactions import (
 )
 from supra_sdk.type_tag import StructTag, TypeTag
 
-from .common import FAUCET_URL, INDEXER_URL, NODE_URL
+from .common import FAUCET_URL, NODE_URL
 
 
 async def main():
     # :!:>section_1
     rest_client = RestClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)  # <:!:section_1
-    if INDEXER_URL and INDEXER_URL != "none":
-        IndexerClient(INDEXER_URL)
-    else:
-        pass
 
     # :!:>section_2
     key1 = secp256k1_ecdsa.PrivateKey.random()

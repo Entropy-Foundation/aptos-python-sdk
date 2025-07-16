@@ -8,28 +8,41 @@ from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import httpx
-import python_graphql_client
 
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
-from supra_sdk.api_types import (AccountAutomatedTxPagination,
-                                 AccountCoinTxPaginationWithOrder,
-                                 AccountPublishedListPagination,
-                                 AccountTxPaginationWithOrder,
-                                 ConsensusBlockByHeightQuery, EventQuery,
-                                 SupraRestAcceptType, TableItemRequest,
-                                 TransactionType)
-from supra_sdk.authenticator import (AccountAuthenticator, Authenticator,
-                                     Ed25519Authenticator,
-                                     MultiAgentAuthenticator)
+from supra_sdk.api_types import (
+    AccountAutomatedTxPagination,
+    AccountCoinTxPaginationWithOrder,
+    AccountPublishedListPagination,
+    AccountTxPaginationWithOrder,
+    ConsensusBlockByHeightQuery,
+    EventQuery,
+    SupraRestAcceptType,
+    TableItemRequest,
+    TransactionType,
+)
+from supra_sdk.authenticator import (
+    AccountAuthenticator,
+    Authenticator,
+    Ed25519Authenticator,
+    MultiAgentAuthenticator,
+)
 from supra_sdk.bcs import Serializer
-from supra_sdk.transactions import (AutomationRegistrationParamsV1,
-                                    AutomationRegistrationParamsV1Data,
-                                    EntryFunction, ModuleId, MoveTransaction,
-                                    MultiAgentRawTransaction, RawTransaction,
-                                    SignedTransaction, SupraTransaction,
-                                    TransactionArgument, TransactionPayload,
-                                    TransactionPayloadAutomationRegistration)
+from supra_sdk.transactions import (
+    AutomationRegistrationParamsV1,
+    AutomationRegistrationParamsV1Data,
+    EntryFunction,
+    ModuleId,
+    MoveTransaction,
+    MultiAgentRawTransaction,
+    RawTransaction,
+    SignedTransaction,
+    SupraTransaction,
+    TransactionArgument,
+    TransactionPayload,
+    TransactionPayloadAutomationRegistration,
+)
 from supra_sdk.type_tag import StructTag, TypeTag
 
 from .metadata import Metadata
@@ -57,42 +70,6 @@ class ClientConfig:
     transaction_wait_in_seconds: int = 20
     http2: bool = False
     api_key: Optional[str] = None
-
-
-class IndexerClient:
-    """A wrapper around the Supra Indexer Service on Hasura"""
-
-    client: python_graphql_client.GraphqlClient
-
-    def __init__(self, indexer_url: str, bearer_token: Optional[str] = None):
-        """
-        Initializes the IndexerClient.
-
-        Args:
-            indexer_url (str): GraphQL endpoint URL.
-            bearer_token (Optional[str]): Optional token for Authorization header.
-        """
-
-        headers = {}
-        if bearer_token:
-            headers["Authorization"] = f"Bearer {bearer_token}"
-        self.client = python_graphql_client.GraphqlClient(
-            endpoint=indexer_url, headers=headers
-        )
-
-    async def query(self, query: str, variables: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Execute a GraphQL query asynchronously.
-
-        Args:
-            query (str): The GraphQL query string.
-            variables (Dict[str, Any]): Dictionary of query variables.
-
-        Returns:
-            Dict[str, Any]: The query response data.
-        """
-
-        return await self.client.execute_async(query, variables)
 
 
 class RestClient:
