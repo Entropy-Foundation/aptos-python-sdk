@@ -55,20 +55,9 @@ async def main():
 
     print("\n=== Initial Balances ===")
     # :!:>section_4
-    alice_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{alice_address.__str__()}"],
-    }
 
-    bob_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{bob.address().__str__()}"],
-    }
-
-    alice_balance = rest_client.account_balance(alice_data)
-    bob_balance = rest_client.account_balance(bob_data)
+    alice_balance = rest_client.account_balance(alice_address)
+    bob_balance = rest_client.account_balance(bob.address())
     [alice_balance, bob_balance] = await asyncio.gather(*[alice_balance, bob_balance])
     print(f"Alice: {alice_balance}")
     print(f"Bob: {bob_balance}")  # <:!:section_4
@@ -123,8 +112,8 @@ async def main():
     await rest_client.wait_for_transaction(txn_hash)  # <:!:section_6
 
     print("\n=== Final Balances ===")
-    alice_balance = rest_client.account_balance(alice_data)
-    bob_balance = rest_client.account_balance(bob_data)
+    alice_balance = rest_client.account_balance(alice_address)
+    bob_balance = rest_client.account_balance(bob.address())
     [alice_balance, bob_balance] = await asyncio.gather(*[alice_balance, bob_balance])
     print(f"Alice: {alice_balance}")
     print(f"Bob: {bob_balance}")  # <:!:section_4

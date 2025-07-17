@@ -51,21 +51,8 @@ async def main():
     print("\n=== Initial Data ===")
     # :!:>section_4
     alice_sequence_number = await rest_client.account_sequence_number(alice.address())
-
-    sponsor_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{sponsor.address().__str__()}"],
-    }
-
-    bob_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{bob.address().__str__()}"],
-    }
-
-    bob_balance = await rest_client.account_balance(bob_data)
-    sponsor_balance = await rest_client.account_balance(sponsor_data)
+    bob_balance = await rest_client.account_balance(bob.address())
+    sponsor_balance = await rest_client.account_balance(sponsor.address())
     print(f"Alice sequence number: {alice_sequence_number}")
     print(f"Bob balance: {bob_balance}")
     print(f"Sponsor balance: {sponsor_balance}")  # <:!:section_4
@@ -110,8 +97,8 @@ async def main():
 
     print("\n=== Final Data ===")
     alice_sequence_number = rest_client.account_sequence_number(alice.address())
-    bob_balance = rest_client.account_balance(bob_data)
-    sponsor_balance = rest_client.account_balance(sponsor_data)
+    bob_balance = rest_client.account_balance(bob.address())
+    sponsor_balance = rest_client.account_balance(sponsor.address())
     [alice_sequence_number, bob_balance, sponsor_balance] = await asyncio.gather(
         *[alice_sequence_number, bob_balance, sponsor_balance]
     )

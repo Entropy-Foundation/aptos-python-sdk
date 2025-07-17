@@ -11,29 +11,47 @@ import httpx
 
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
-from supra_sdk.api_types import (AccountAutomatedTxPagination,
-                                 AccountCoinTxPaginationWithOrder,
-                                 AccountPublishedListPagination,
-                                 AccountTxPaginationWithOrder,
-                                 ConsensusBlockByHeightQuery, EventQuery,
-                                 SupraRestAcceptType, TableItemRequest,
-                                 TransactionType)
-from supra_sdk.authenticator import (AccountAuthenticator, Authenticator,
-                                     Ed25519Authenticator,
-                                     MultiAgentAuthenticator)
+from supra_sdk.api_types import (
+    AccountAutomatedTxPagination,
+    AccountCoinTxPaginationWithOrder,
+    AccountPublishedListPagination,
+    AccountTxPaginationWithOrder,
+    ConsensusBlockByHeightQuery,
+    EventQuery,
+    SupraRestAcceptType,
+    TableItemRequest,
+    TransactionType,
+    ViewData,
+)
+from supra_sdk.authenticator import (
+    AccountAuthenticator,
+    Authenticator,
+    Ed25519Authenticator,
+    MultiAgentAuthenticator,
+)
 from supra_sdk.bcs import Serializer
-from supra_sdk.transactions import (AutomationRegistrationParamsV1,
-                                    AutomationRegistrationParamsV1Data,
-                                    EntryFunction, ModuleId, MoveTransaction,
-                                    MultiAgentRawTransaction, RawTransaction,
-                                    SignedTransaction, SupraTransaction,
-                                    TransactionArgument, TransactionPayload,
-                                    TransactionPayloadAutomationRegistration)
+from supra_sdk.transactions import (
+    AutomationRegistrationParamsV1,
+    AutomationRegistrationParamsV1Data,
+    EntryFunction,
+    ModuleId,
+    MoveTransaction,
+    MultiAgentRawTransaction,
+    RawTransaction,
+    SignedTransaction,
+    SupraTransaction,
+    TransactionArgument,
+    TransactionPayload,
+    TransactionPayloadAutomationRegistration,
+)
 from supra_sdk.type_tag import StructTag, TypeTag
 
 from .metadata import Metadata
 
 U64_MAX = 18446744073709551615
+DEFAULT_MAX_GAS_AMOUNT = 500_000
+DEFAULT_GAS_UNIT_PRICE = 100
+DEFAULT_EXPIRATION_TTL_SECONDS = 600
 
 
 @dataclass
@@ -115,11 +133,7 @@ class RestClient:
             if resp.status_code != HTTPStatus.OK:
                 raise ApiError(f"{resp.text}", resp.status_code)
             result = resp.json()
-            self._chain_id = (
-                int(result)
-                if isinstance(result, (int, str))
-                else int(result.get("chain_id", result))
-            )
+            self._chain_id = int(result)
         return self._chain_id
 
     ###########
@@ -142,16 +156,20 @@ class RestClient:
             Dict[str, str]: The account metadata.
         """
 
-        endpoint = f"rpc/v3/accounts/{account_address.__str__()}"
+        endpoint = f"rpc/v3/accounts/{account_address}"
         headers = {"Accept": accept_type.value}
 
-        resp = await self._get(endpoint=endpoint, headers=headers, params=None)
+        resp = await self._get(endpoint=endpoint, headers=headers)
 
         if resp.status_code != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {account_address}", resp.status_code)
         return resp.json()
 
-    async def account_balance(self, data: Union[Dict[str, Any], bytes]) -> int:
+    async def account_balance(
+        self,
+        account_address: AccountAddress,
+        coin_type: str = "0x1::supra_coin::SupraCoin",
+    ) -> int:
         """
         Get the account balance.
 
@@ -159,12 +177,19 @@ class RestClient:
         and returns it as an integer.
 
         Args:
-            data (Union[Dict[str, Any], bytes]): The payload or raw bytes required
-                by the view function to fetch the balance.
+            account_address (AccountAddress): The address of the account.
+            coin_type (str): The type of coin for which balance needs to be found.
 
         Returns:
             int: The account balance.
         """
+
+        data = ViewData(
+            function="0x1::coin::balance",
+            type_arguments=[f"{coin_type}"],
+            arguments=[f"{account_address}"],
+        )
+
         res = await self.view_function(data)
         return int(res["result"][0])
 
@@ -219,7 +244,7 @@ class RestClient:
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
 
-        endpoint = f"rpc/v3/accounts/{account_address.__str__()}/transactions"
+        endpoint = f"rpc/v3/accounts/{account_address}/transactions"
         headers = {"Accept": accept_type.value}
         params = pagination_with_order.to_params() if pagination_with_order else {}
 
@@ -257,7 +282,7 @@ class RestClient:
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
 
-        endpoint = f"rpc/v3/accounts/{address.__str__()}/automated_transactions"
+        endpoint = f"rpc/v3/accounts/{address}/automated_transactions"
         headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
@@ -295,7 +320,7 @@ class RestClient:
             accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
-        endpoint = f"rpc/v3/accounts/{account_address.__str__()}/coin_transactions"
+        endpoint = f"rpc/v3/accounts/{account_address}/coin_transactions"
         headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
@@ -330,7 +355,7 @@ class RestClient:
             accept_type.value,
             [SupraRestAcceptType.BCS.value, SupraRestAcceptType.OCTET.value],
         )
-        endpoint = f"rpc/v3/accounts/{account_address.__str__()}/resources"
+        endpoint = f"rpc/v3/accounts/{account_address}/resources"
         headers = {"Accept": accept_type.value}
         params = pagination.to_params() if pagination else {}
 
@@ -396,10 +421,10 @@ class RestClient:
 
         self._check_accept_type(accept_type.value, [SupraRestAcceptType.OCTET.value])
         address, tag_string = path_param[0], path_param[1]
-        endpoint = f"rpc/v3/accounts/{address.__str__()}/resources/{tag_string}"
+        endpoint = f"rpc/v3/accounts/{address}/resources/{tag_string}"
         headers = {"Accept": accept_type.value}
 
-        resp = await self._get(endpoint=endpoint, headers=headers, params=None)
+        resp = await self._get(endpoint=endpoint, headers=headers)
         if resp.status_code != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {address}", resp.status_code)
         return resp.json()
@@ -428,7 +453,7 @@ class RestClient:
         endpoint = f"rpc/v3/accounts/{address}/modules/{module_name}"
         headers = {"Accept": accept_type.value}
 
-        resp = await self._get(endpoint=endpoint, headers=headers, params=None)
+        resp = await self._get(endpoint=endpoint, headers=headers)
         if resp.status_code != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {address}", resp.status_code)
         return resp.json()
@@ -554,10 +579,9 @@ class RestClient:
         """
 
         endpoint = "rpc/v3/transactions/submit"
-        txn_data = transaction_data.to_dict()
-        resp = await self._post(endpoint=endpoint, data=txn_data)
+        resp = await self._post(endpoint=endpoint, data=transaction_data)
         if resp.status_code != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {txn_data}", resp.status_code)
+            raise ApiError(f"{resp.text} - {transaction_data}", resp.status_code)
         return resp.json()
 
     async def simulate_tx(self, transaction_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -575,10 +599,9 @@ class RestClient:
         """
 
         endpoint = "rpc/v3/transactions/simulate"
-        txn_data = transaction_data.to_dict()
-        resp = await self._post(endpoint=endpoint, data=txn_data)
+        resp = await self._post(endpoint=endpoint, data=transaction_data)
         if resp.status_code != HTTPStatus.OK:
-            raise ApiError(f"{resp.text} - {txn_data}", resp.status_code)
+            raise ApiError(f"{resp.text} - {transaction_data}", resp.status_code)
         return resp.json()
 
     async def simulate_bcs_txn(
@@ -664,8 +687,8 @@ class RestClient:
         """
 
         txn_hash = await self.submit_bcs_txn(signed_transaction)
-        await self.wait_for_transaction(txn_hash)
-        return await self.transaction_by_hash(txn_hash)
+        txn_data = await self.wait_for_transaction(txn_hash)
+        return txn_data
 
     async def transaction_pending(self, txn_hash: str) -> bool:
         """
@@ -683,7 +706,7 @@ class RestClient:
 
         try:
             response = await self.transaction_by_hash(txn_hash)
-            return response.get("type") == "pending_transaction"
+            return response.get("status") == "pending_transaction"
 
         except ApiError as e:
             if e.status_code == HTTPStatus.NOT_FOUND:
@@ -691,15 +714,19 @@ class RestClient:
             else:
                 raise e
 
-    async def wait_for_transaction(self, txn_hash: str) -> None:
+    async def wait_for_transaction(self, txn_hash: str) -> Dict[str, Any]:
         """
         Wait for a transaction to complete or fail.
 
         This method repeatedly checks the transaction status until it is no longer
-        pending or until the configured timeout is reached.
+        pending or until the configured timeout is reached.If the transaction fails
+        or times out, an AssertionError is raised.
 
         Args:
             txn_hash (str): The hash of the transaction to wait for.
+
+        Returns:
+            Dict[str, Any]: The final transaction data once the transaction has succeeded.
 
         Raises:
             AssertionError: If the transaction times out or fails with a non-success status.
@@ -719,6 +746,8 @@ class RestClient:
         assert txn_data.get("status") == "Success", f"Transaction failed with status: {
             txn_data.get('status')
         } - {txn_hash}"
+
+        return txn_data
 
     ########################
     # TRANSACTIONS HELPERS #
@@ -902,8 +931,8 @@ class RestClient:
         automation_fee_cap_for_epoch: int,
         automation_expiration_timestamp_secs: int,
         automation_aux_data: List[bytes],
-        max_gas_amount: int = 100000000,
-        gas_unit_price: int = 100,
+        max_gas_amount: int = DEFAULT_MAX_GAS_AMOUNT,
+        gas_unit_price: int = DEFAULT_GAS_UNIT_PRICE,
         expiration_timestamp_secs: Optional[int] = None,
     ) -> RawTransaction:
         """
@@ -972,7 +1001,7 @@ class RestClient:
             max_gas_amount=max_gas_amount,
             gas_unit_price=gas_unit_price,
             expiration_timestamps_secs=expiration_timestamp_secs
-            or (int(time.time()) + 600),
+            or (int(time.time()) + DEFAULT_EXPIRATION_TTL_SECONDS),
             chain_id=chain_id,
         )
 
@@ -1336,7 +1365,7 @@ class RestClient:
 
         params = {"with_finalized_transactions": with_finalized_transaction}
 
-        if transaction_type is not None:
+        if transaction_type:
             params["transaction_type"] = transaction_type.value
 
         resp = await self._get(endpoint=endpoint, params=params)
@@ -1364,7 +1393,7 @@ class RestClient:
         endpoint = f"rpc/v3/block/{block_hash}/transactions"
 
         params = {}
-        if transaction_type is not None:
+        if transaction_type:
             params["transaction_type"] = transaction_type.value
 
         resp = await self._get(endpoint=endpoint, params=params)
@@ -1457,7 +1486,7 @@ class RestClient:
             Dict[str, Any]: Item of the table as MoveValueApi.
         """
 
-        endpoint = f"rpc/v2/tables/{table_handle.__str__()}/item"
+        endpoint = f"rpc/v2/tables/{table_handle}/item"
         content = (
             table_item_request.to_params() if table_item_request is not None else {}
         )
@@ -1478,12 +1507,12 @@ class RestClient:
     # VIEW #
     ########
 
-    async def view_function(self, data: Union[Dict[str, Any], bytes]) -> Dict[str, Any]:
+    async def view_function(self, data: ViewData) -> Dict[str, Any]:
         """
         Executes a view function without creating a transaction on-chain.
 
         Args:
-            data (Union[Dict[str, Any], bytes]): The request payload for the view function.
+            data (ViewData): The request payload for the view function.
 
         Returns:
             Dict[str, Any]: JSON result of the view function.
@@ -1494,7 +1523,7 @@ class RestClient:
 
         endpoint = "rpc/v3/view"
 
-        resp = await self._post(endpoint=endpoint, data=data)
+        resp = await self._post(endpoint=endpoint, data=data.to_params())
         if resp.status_code != HTTPStatus.OK:
             raise ApiError(f"{resp.text} - {data}", resp.status_code)
         return resp.json()
@@ -1626,23 +1655,18 @@ class FaucetClient:
     rest_client: RestClient
     headers: Dict[str, str]
 
-    def __init__(
-        self, base_url: str, rest_client: RestClient, auth_token: Optional[str] = None
-    ):
+    def __init__(self, base_url: str, rest_client: RestClient):
         """
         Initializes the FaucetClient.
 
         Args:
             base_url (str): Faucet service URL.
             rest_client (RestClient): Instance of RestClient to use.
-            auth_token (Optional[str]): Optional bearer token for authorization.
         """
 
         self.base_url = base_url
         self.rest_client = rest_client
         self.headers = {}
-        if auth_token:
-            self.headers["Authorization"] = f"Bearer {auth_token}"
 
     async def close(self):
         await self.rest_client.close()
@@ -1661,7 +1685,7 @@ class FaucetClient:
             ApiError: If the API request fails with a non-200 status code.
         """
 
-        endpoint = f"rpc/v1/wallet/faucet/{address.__str__()}"
+        endpoint = f"rpc/v1/wallet/faucet/{address}"
 
         resp = await self._get(endpoint=endpoint)
         if resp.status_code != HTTPStatus.OK:
@@ -1841,12 +1865,9 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_account_balance(self):
-        data = {
-            "function": "0x1::coin::balance",
-            "type_arguments": ["0x1::supra_coin::SupraCoin"],
-            "arguments": [f"{self.test_account.account_address.__str__()}"],
-        }
-        res = await self.client.account_balance(data)
+        res = await self.client.account_balance(
+            account_address=self.test_account.account_address
+        )
         self.assertEqual(res, 500000000)
 
     async def test_account_sequesnce_number(self):
@@ -2037,7 +2058,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
             chain_id=chain_id,
             break_signature=True,
         )
-        res = await self.client.simulate_tx(transaction_data=move_txn)
+        res = await self.client.simulate_tx(transaction_data=move_txn.to_dict())
         self.assertEqual(
             res["status"], "Invalid", "FAIL: Status of simulated txn must be `Invalid`"
         )
@@ -2076,7 +2097,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
             chain_id=chain_id,
         )
 
-        res = await self.client.submit_txn(transaction_data=move_txn)
+        res = await self.client.submit_txn(transaction_data=move_txn.to_dict())
         self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
 
     async def test_submit_bcs_transaction(self) -> MoveTransaction:
@@ -2309,20 +2330,12 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         await self.client.wait_for_transaction(resp["Accepted"])
 
         # Get initial balances
-        sender_balance_data = {
-            "function": "0x1::coin::balance",
-            "type_arguments": ["0x1::supra_coin::SupraCoin"],
-            "arguments": [str(self.test_account.account_address)],
-        }
-        initial_sender_balance = await self.client.account_balance(sender_balance_data)
+        initial_sender_balance = await self.client.account_balance(
+            self.test_account.account_address
+        )
 
-        recipient_balance_data = {
-            "function": "0x1::coin::balance",
-            "type_arguments": ["0x1::supra_coin::SupraCoin"],
-            "arguments": [str(recipient_account.account_address)],
-        }
         initial_recipient_balance = await self.client.account_balance(
-            recipient_balance_data
+            recipient_account.account_address
         )
 
         # Transfer amount
@@ -2347,9 +2360,11 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         await self.client.wait_for_transaction(txn_hash)
 
         # Verify balances changed correctly
-        final_sender_balance = await self.client.account_balance(sender_balance_data)
+        final_sender_balance = await self.client.account_balance(
+            self.test_account.account_address
+        )
         final_recipient_balance = await self.client.account_balance(
-            recipient_balance_data
+            recipient_account.account_address
         )
 
         # Sender should have less (transfer amount + gas fees)
@@ -2376,20 +2391,12 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         await self.client.wait_for_transaction(resp["Accepted"])
 
         # Get initial balances
-        sender_balance_data = {
-            "function": "0x1::coin::balance",
-            "type_arguments": ["0x1::supra_coin::SupraCoin"],
-            "arguments": [str(self.test_account.account_address)],
-        }
-        initial_sender_balance = await self.client.account_balance(sender_balance_data)
+        initial_sender_balance = await self.client.account_balance(
+            self.test_account.account_address
+        )
 
-        recipient_balance_data = {
-            "function": "0x1::coin::balance",
-            "type_arguments": ["0x1::supra_coin::SupraCoin"],
-            "arguments": [str(recipient_account.account_address)],
-        }
         initial_recipient_balance = await self.client.account_balance(
-            recipient_balance_data
+            recipient_account.account_address
         )
 
         # Transfer amount
@@ -2415,9 +2422,11 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         await self.client.wait_for_transaction(txn_hash)
 
         # Verify balances changed correctly
-        final_sender_balance = await self.client.account_balance(sender_balance_data)
+        final_sender_balance = await self.client.account_balance(
+            self.test_account.account_address
+        )
         final_recipient_balance = await self.client.account_balance(
-            recipient_balance_data
+            recipient_account.account_address
         )
 
         # Sender should have less (transfer amount + gas fees)
@@ -2682,11 +2691,7 @@ class ViewTest(unittest.IsolatedAsyncioTestCase):
         self.client = RestClient(self.base_url, self.client_config)
 
     async def test_view_function(self):
-        data = {
-            "function": "0x1::timestamp::now_microseconds",
-            "type_arguments": [],
-            "arguments": [],
-        }
+        data = ViewData(function="0x1::timestamp::now_microseconds")
 
         res = await self.client.view_function(data=data)
         self.assertIsInstance(res, dict, "FAIL: Wrong data-type returned")

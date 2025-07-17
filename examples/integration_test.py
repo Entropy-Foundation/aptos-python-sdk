@@ -30,7 +30,6 @@ class Test(unittest.IsolatedAsyncioTestCase):
             raise Exception("".join(self._node.errors()))
 
         os.environ["SUPRA_FAUCET_URL"] = "http://127.0.0.1:27001"
-        os.environ["SUPRA_INDEXER_CLIENT"] = "none"
         os.environ["SUPRA_NODE_URL"] = "http://127.0.0.1:27000"
 
     async def test_supra_token(self):

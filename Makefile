@@ -26,9 +26,7 @@ examples:
 	poetry run python -m examples.fee_payer_transfer_coin
 	poetry run python -m examples.rotate_key
 	poetry run python -m examples.read_aggregator
-	# poetry run python -m examples.secp256k1_ecdsa_transfer_coin
 	poetry run python -m examples.simple_supra_token
-	# poetry run python -m examples.simple_nft
 	poetry run python -m examples.simulate_transfer_coin
 	poetry run python -m examples.transfer_coin
 	poetry run python -m examples.transfer_two_by_two

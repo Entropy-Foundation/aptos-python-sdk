@@ -50,12 +50,8 @@ async def main(
     req1 = faucet_client.faucet(alice.address())
     req2 = faucet_client.faucet(alice.address())
     await asyncio.gather(*[req0, req1, req2])
-    alice_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{alice.address().__str__()}"],
-    }
-    alice_balance = await rest_client.account_balance(alice_data)
+
+    alice_balance = await rest_client.account_balance(alice.address())
 
     print(f"Alice: {alice.address()} {alice_balance}")
 

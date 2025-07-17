@@ -90,34 +90,10 @@ async def main(should_wait_input=True):
         rest_client.wait_for_transaction(multisig_fund_resp["Accepted"]),
     )
 
-    alice_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{alice.address().__str__()}"],
-    }
-
-    bob_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{bob.address().__str__()}"],
-    }
-
-    chad_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{chad.address().__str__()}"],
-    }
-
-    multisig_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{multisig_address.__str__()}"],
-    }
-
-    alice_balance = rest_client.account_balance(alice_data)
-    bob_balance = rest_client.account_balance(bob_data)
-    chad_balance = rest_client.account_balance(chad_data)
-    multisig_balance = rest_client.account_balance(multisig_data)
+    alice_balance = rest_client.account_balance(alice.address())
+    bob_balance = rest_client.account_balance(bob.address())
+    chad_balance = rest_client.account_balance(chad.address())
+    multisig_balance = rest_client.account_balance(multisig_address)
     [alice_balance, bob_balance, chad_balance, multisig_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, chad_balance, multisig_balance]
     )
@@ -188,10 +164,10 @@ async def main(should_wait_input=True):
     # :!:>section_6
     print("\n=== New account balances===")
 
-    alice_balance = rest_client.account_balance(alice_data)
-    bob_balance = rest_client.account_balance(bob_data)
-    chad_balance = rest_client.account_balance(chad_data)
-    multisig_balance = rest_client.account_balance(multisig_data)
+    alice_balance = rest_client.account_balance(alice.address())
+    bob_balance = rest_client.account_balance(bob.address())
+    chad_balance = rest_client.account_balance(chad.address())
+    multisig_balance = rest_client.account_balance(multisig_address)
     [alice_balance, bob_balance, chad_balance, multisig_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, chad_balance, multisig_balance]
     )
@@ -222,7 +198,7 @@ async def main(should_wait_input=True):
     }
 
     await faucet_client.faucet(deedee.address())
-    deedee_balance = await rest_client.account_balance(deedee_data)
+    deedee_balance = await rest_client.account_balance(deedee.address())
     print(f"Deedee's balance:    {deedee_balance}")  # <:!:section_7
 
     wait()
@@ -498,10 +474,10 @@ async def main(should_wait_input=True):
     await rest_client.wait_for_transaction(tx_hash)
     print(f"Transaction hash: {tx_hash}")
 
-    alice_balance = rest_client.account_balance(alice_data)
-    bob_balance = rest_client.account_balance(bob_data)
-    chad_balance = rest_client.account_balance(chad_data)
-    multisig_balance = rest_client.account_balance(multisig_data)
+    alice_balance = rest_client.account_balance(alice.address())
+    bob_balance = rest_client.account_balance(bob.address())
+    chad_balance = rest_client.account_balance(chad.address())
+    multisig_balance = rest_client.account_balance(multisig_address)
     [alice_balance, bob_balance, chad_balance, multisig_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, chad_balance, multisig_balance]
     )

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -25,6 +25,36 @@ class ConsensusBlockByHeightQuery:
     def to_params(self) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
         params["with_batches"] = str(self.with_batches).lower()
+        return params
+
+
+@dataclass
+class ViewData:
+    """
+    Represents a request to call a view function.
+
+    Attributes:
+        function (str): Function that needs to be called.
+        type_arguments (List[str]): Generic type arguments for the function call.
+        arguments (List[str]): The arguments to pass to the view function.
+    """
+
+    function: str
+    type_arguments: List[str] = field(default_factory=list)
+    arguments: List[str] = field(default_factory=list)
+
+    def to_params(self) -> Dict[str, Any]:
+        """
+        Converts the ViewData into a dictionary of parameters for an HTTP request.
+
+        Returns:
+            Dict[str, Any]: Dictionary containing non-null fields as request parameters.
+        """
+
+        params: Dict[str, Any] = {}
+        params["function"] = self.function
+        params["type_arguments"] = self.type_arguments
+        params["arguments"] = self.arguments
         return params
 
 

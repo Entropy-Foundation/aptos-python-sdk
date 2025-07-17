@@ -37,34 +37,10 @@ async def main():
         rest_client.wait_for_transaction(david_fund_resp["Accepted"]),
     )
 
-    alice_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{alice.address().__str__()}"],
-    }
-
-    bob_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{bob.address().__str__()}"],
-    }
-
-    carol_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{carol.address().__str__()}"],
-    }
-
-    david_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{david.address().__str__()}"],
-    }
-
-    alice_balance = rest_client.account_balance(alice_data)
-    bob_balance = rest_client.account_balance(bob_data)
-    carol_balance = rest_client.account_balance(carol_data)
-    david_balance = rest_client.account_balance(david_data)
+    alice_balance = rest_client.account_balance(alice.address())
+    bob_balance = rest_client.account_balance(bob.address())
+    carol_balance = rest_client.account_balance(carol.address())
+    david_balance = rest_client.account_balance(david.address())
     [alice_balance, bob_balance, carol_balance, david_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, carol_balance, david_balance]
     )
@@ -95,10 +71,10 @@ async def main():
     txn_hash = await rest_client.submit_bcs_txn(signed_transaction)
     await rest_client.wait_for_transaction(txn_hash)
 
-    alice_balance = rest_client.account_balance(alice_data)
-    bob_balance = rest_client.account_balance(bob_data)
-    carol_balance = rest_client.account_balance(carol_data)
-    david_balance = rest_client.account_balance(david_data)
+    alice_balance = rest_client.account_balance(alice.address())
+    bob_balance = rest_client.account_balance(bob.address())
+    carol_balance = rest_client.account_balance(carol.address())
+    david_balance = rest_client.account_balance(david.address())
     [alice_balance, bob_balance, carol_balance, david_balance] = await asyncio.gather(
         *[alice_balance, bob_balance, carol_balance, david_balance]
     )

@@ -119,20 +119,8 @@ async def main(contract_address: AccountAddress):
         rest_client.wait_for_transaction(bob_fund_resp["Accepted"]),
     )
 
-    alice_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{alice.address().__str__()}"],
-    }
-
-    bob_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{bob.address().__str__()}"],
-    }
-
-    a_alice_balance = rest_client.account_balance(alice_data)
-    a_bob_balance = rest_client.account_balance(bob_data)
+    a_alice_balance = rest_client.account_balance(alice.address())
+    a_bob_balance = rest_client.account_balance(bob.address())
     [alice_balance, bob_balance] = await asyncio.gather(
         *[a_alice_balance, a_bob_balance]
     )

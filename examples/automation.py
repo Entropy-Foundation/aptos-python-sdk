@@ -117,12 +117,7 @@ async def main():
 async def get_balance(rest_client, account):
     """Get account balance"""
     try:
-        balance_data = {
-            "function": "0x1::coin::balance",
-            "type_arguments": ["0x1::supra_coin::SupraCoin"],
-            "arguments": [f"{account.address()}"],
-        }
-        return await rest_client.account_balance(balance_data)
+        return await rest_client.account_balance(account.address())
     except Exception:
         return -1
 
