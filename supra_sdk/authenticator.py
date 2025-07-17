@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import typing
-from typing import List
+from typing import Any, Dict, List
 
 from . import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519
 from .account_address import AccountAddress
@@ -60,6 +60,77 @@ class Authenticator:
 
     def __str__(self) -> str:
         return self.authenticator.__str__()
+
+    def to_dict(self) -> Dict[str, Any]:
+        if self.variant == Authenticator.ED25519:
+            ed25519_auth = self.authenticator
+            return {
+                "Ed25519": {
+                    "public_key": ed25519_auth.public_key.to_crypto_bytes().hex(),
+                    "signature": str(ed25519_auth.signature),
+                }
+            }
+        elif self.variant == Authenticator.MULTI_ED25519:
+            multi_ed25519_auth = self.authenticator
+            return {
+                "MultiEd25519": {
+                    "public_key": multi_ed25519_auth.public_key.to_crypto_bytes().hex(),
+                    "signature": str(multi_ed25519_auth.signature),
+                }
+            }
+        elif self.variant == Authenticator.MULTI_AGENT:
+            multi_agent_auth = self.authenticator
+            return {
+                "MultiAgent": {
+                    "sender": multi_agent_auth.sender.to_dict()
+                    if hasattr(multi_agent_auth.sender, "to_dict")
+                    else str(multi_agent_auth.sender),
+                    "secondary_signers": [
+                        {
+                            "address": addr.__str__(),
+                            "authenticator": auth.to_dict()
+                            if hasattr(auth, "to_dict")
+                            else str(auth),
+                        }
+                        for addr, auth in multi_agent_auth.secondary_signers
+                    ],
+                }
+            }
+        elif self.variant == Authenticator.FEE_PAYER:
+            fee_payer_auth = self.authenticator
+            return {
+                "FeePayer": {
+                    "sender": fee_payer_auth.sender.to_dict()
+                    if hasattr(fee_payer_auth.sender, "to_dict")
+                    else str(fee_payer_auth.sender),
+                    "secondary_signers": [
+                        {
+                            "address": addr.__str__(),
+                            "authenticator": auth.to_dict()
+                            if hasattr(auth, "to_dict")
+                            else str(auth),
+                        }
+                        for addr, auth in fee_payer_auth.secondary_signers
+                    ],
+                    "fee_payer": {
+                        "address": fee_payer_auth.fee_payer[0].__str__(),
+                        "authenticator": fee_payer_auth.fee_payer[1].to_dict()
+                        if hasattr(fee_payer_auth.fee_payer[1], "to_dict")
+                        else str(fee_payer_auth.fee_payer[1]),
+                    },
+                }
+            }
+        elif self.variant == Authenticator.SINGLE_SENDER:
+            single_sender_auth = self.authenticator
+            return {
+                "SingleSender": {
+                    "sender": single_sender_auth.sender.to_dict()
+                    if hasattr(single_sender_auth.sender, "to_dict")
+                    else str(single_sender_auth.sender)
+                }
+            }
+        else:
+            raise Exception(f"Unsupported authenticator variant: {self.variant}")
 
     def verify(self, data: bytes) -> bool:
         return self.authenticator.verify(data)
@@ -125,6 +196,44 @@ class AccountAuthenticator:
 
     def verify(self, data: bytes) -> bool:
         return self.authenticator.verify(data)
+
+    def to_dict(self) -> Dict[str, Any]:
+        if self.variant == AccountAuthenticator.ED25519:
+            ed25519_auth = self.authenticator
+            return {
+                "Ed25519": {
+                    "public_key": ed25519_auth.public_key.to_crypto_bytes().hex(),
+                    "signature": str(ed25519_auth.signature),
+                }
+            }
+        elif self.variant == AccountAuthenticator.MULTI_ED25519:
+            multi_ed25519_auth = self.authenticator
+            return {
+                "MultiEd25519": {
+                    "public_key": multi_ed25519_auth.public_key.to_crypto_bytes().hex(),
+                    "signature": str(multi_ed25519_auth.signature),
+                }
+            }
+        elif self.variant == AccountAuthenticator.SINGLE_KEY:
+            single_key_auth = self.authenticator
+            return {
+                "SingleKey": {
+                    "public_key": single_key_auth.public_key.to_crypto_bytes().hex(),
+                    "signature": str(single_key_auth.signature),
+                }
+            }
+        elif self.variant == AccountAuthenticator.MULTI_KEY:
+            multi_key_auth = self.authenticator
+            return {
+                "MultiKey": {
+                    "public_key": multi_key_auth.public_key.to_crypto_bytes().hex(),
+                    "signature": str(multi_key_auth.signature),
+                }
+            }
+        else:
+            raise Exception(
+                f"Unsupported account authenticator variant: {self.variant}"
+            )
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> AccountAuthenticator:

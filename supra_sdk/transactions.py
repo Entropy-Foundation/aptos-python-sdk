@@ -12,8 +12,7 @@ import hashlib
 import time
 import traceback
 import unittest
-from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union,
-                    cast)
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, cast
 
 from typing_extensions import Protocol
 
@@ -22,10 +21,15 @@ if TYPE_CHECKING:
 
 from . import asymmetric_crypto, ed25519, secp256k1_ecdsa
 from .account_address import AccountAddress
-from .authenticator import (AccountAuthenticator, Authenticator,
-                            Ed25519Authenticator, FeePayerAuthenticator,
-                            MultiAgentAuthenticator, SingleKeyAuthenticator,
-                            SingleSenderAuthenticator)
+from .authenticator import (
+    AccountAuthenticator,
+    Authenticator,
+    Ed25519Authenticator,
+    FeePayerAuthenticator,
+    MultiAgentAuthenticator,
+    SingleKeyAuthenticator,
+    SingleSenderAuthenticator,
+)
 from .bcs import Deserializable, Deserializer, Serializable, Serializer
 from .type_tag import StructTag, TypeTag
 
@@ -608,6 +612,24 @@ class SignedTransaction:
 
         self.authenticator = authenticator
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "Move": {
+                "raw_txn": {
+                    "sender": self.transaction.sender.__str__(),
+                    "sequence_number": self.transaction.sequence_number,
+                    "payload": {
+                        "EntryFunction": self.transaction.payload.value.to_dict()
+                    },
+                    "max_gas_amount": self.transaction.max_gas_amount,
+                    "gas_unit_price": self.transaction.gas_unit_price,
+                    "expiration_timestamp_secs": self.transaction.expiration_timestamps_secs,
+                    "chain_id": self.transaction.chain_id,
+                },
+                "authenticator": self.authenticator.to_dict(),
+            }
+        }
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SignedTransaction):
             return NotImplemented
@@ -874,30 +896,6 @@ class SmrTransactionPayload:
     @staticmethod
     def create_oracle_payload(data: bytes) -> "SmrTransactionPayload":
         return SmrTransactionPayload(SmrTransactionPayload.ORACLE, data)
-
-
-class MoveTransaction:
-    def __init__(self, raw_transaction: RawTransaction, authenticator_data: Dict):
-        self.raw_transaction = raw_transaction
-        self.authenticator_data = authenticator_data
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "Move": {
-                "raw_txn": {
-                    "sender": self.raw_transaction.sender.__str__(),
-                    "sequence_number": self.raw_transaction.sequence_number,
-                    "payload": {
-                        "EntryFunction": self.raw_transaction.payload.value.to_dict()
-                    },
-                    "max_gas_amount": self.raw_transaction.max_gas_amount,
-                    "gas_unit_price": self.raw_transaction.gas_unit_price,
-                    "expiration_timestamp_secs": self.raw_transaction.expiration_timestamps_secs,
-                    "chain_id": self.raw_transaction.chain_id,
-                },
-                "authenticator": self.authenticator_data,
-            }
-        }
 
 
 class AutomationRegistrationParamsV1Data:
@@ -1259,8 +1257,12 @@ class Test(unittest.TestCase):
 
 class AutomationTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        from supra_sdk.async_client import (Account, ClientConfig,
-                                            FaucetClient, RestClient)
+        from supra_sdk.async_client import (
+            Account,
+            ClientConfig,
+            FaucetClient,
+            RestClient,
+        )
 
         self.base_url = "http://localhost:27001"
         self.faucet_url = "http://localhost:27001"

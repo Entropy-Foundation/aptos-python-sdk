@@ -24,7 +24,6 @@ from supra_sdk.api_types import (
     ViewData,
 )
 from supra_sdk.authenticator import (
-    AccountAuthenticator,
     Authenticator,
     Ed25519Authenticator,
     MultiAgentAuthenticator,
@@ -35,7 +34,6 @@ from supra_sdk.transactions import (
     AutomationRegistrationParamsV1Data,
     EntryFunction,
     ModuleId,
-    MoveTransaction,
     MultiAgentRawTransaction,
     RawTransaction,
     SignedTransaction,
@@ -2063,7 +2061,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
             res["status"], "Invalid", "FAIL: Status of simulated txn must be `Invalid`"
         )
 
-    async def test_simulate_bcs_transaction(self) -> MoveTransaction:
+    async def test_simulate_bcs_transaction(self):
         account = await self.client.account(
             account_address=self.test_account.account_address
         )
@@ -2100,7 +2098,7 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
         res = await self.client.submit_txn(transaction_data=move_txn.to_dict())
         self.assertEqual(len(res), 66, "FAIL: txn hash length must be 66")
 
-    async def test_submit_bcs_transaction(self) -> MoveTransaction:
+    async def test_submit_bcs_transaction(self):
         account = await self.client.account(
             account_address=self.test_account.account_address
         )
@@ -2473,27 +2471,16 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
             chain_id=chain_id,
         )
 
-        account_authenticator = signer.sign_transaction(raw_txn)
-        if account_authenticator.variant == AccountAuthenticator.ED25519:
-            ed25519_auth = (
-                account_authenticator.authenticator
-            )  # This is Ed25519Authenticator
-            public_key_hex = ed25519_auth.public_key.to_crypto_bytes().hex()
-            signature_hex = str(ed25519_auth.signature)
+        authenticator = signer.sign_transaction(raw_txn)
+        if break_signature:
+            # Create broken signature
+            broken_signature = signer.sign(b"wrong_data_to_break_signature")
+            ed25519_auth = Ed25519Authenticator(
+                public_key=signer.public_key(), signature=broken_signature
+            )
+            authenticator = Authenticator(ed25519_auth)
 
-            if break_signature:
-                signature_hex = "0" * 128
-
-            auth_data = {
-                "Ed25519": {
-                    "public_key": public_key_hex,
-                    "signature": signature_hex,
-                }
-            }
-        else:
-            print(f"Unexpected authenticator variant: {account_authenticator.variant}")
-
-        return MoveTransaction(raw_transaction=raw_txn, authenticator_data=auth_data)
+        return SignedTransaction(transaction=raw_txn, authenticator=authenticator)
 
     def create_bcs_txn(
         self,
