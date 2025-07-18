@@ -1432,7 +1432,7 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
             result = await self.client.send_automation_tx_using_raw_transaction(
                 sender=self.sender,
                 raw_transaction=automation_raw_transaction,
-                enable_transaction_simulation=False,
+                enable_transaction_simulation=True,
                 enable_wait_for_transaction=True,
             )
 
@@ -1456,7 +1456,7 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
             sim_result = await self.client.cancel_automation_task(
                 sender=self.sender, task_index=task_id, simulate=True
             )
-            print(f"✓ Cancellation simulation successful: {sim_result['hash']}")
+            print(f"✓ Cancellation simulation successful: {sim_result}")
         except Exception as e:
             print(f"✗ Cancellation simulation failed: {e}")
 
@@ -1474,7 +1474,7 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
                 task_indexes=[1],
                 simulate=True,
             )
-            print(f"✓ Stop tasks simulation successful: {sim_result['hash']}")
+            print(f"✓ Stop tasks simulation successful: {sim_result}")
         except Exception as e:
             print(f"✗ Stop tasks simulation failed: {e}")
 
