@@ -413,7 +413,7 @@ class EntryFunction:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "module": {
-                "address": str(self.module.address.__str__()),
+                "address": str(self.module.address),
                 "name": self.module.name,
             },
             "function": self.function,
@@ -616,7 +616,7 @@ class SignedTransaction:
         return {
             "Move": {
                 "raw_txn": {
-                    "sender": self.transaction.sender.__str__(),
+                    "sender": f"{self.transaction.sender}",
                     "sequence_number": self.transaction.sequence_number,
                     "payload": {
                         "EntryFunction": self.transaction.payload.value.to_dict()
@@ -1264,8 +1264,8 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
             RestClient,
         )
 
-        self.base_url = "http://localhost:27001"
-        self.faucet_url = "http://localhost:27001"
+        self.base_url = "https://rpc-testnet.supra.com"
+        self.faucet_url = "https://rpc-testnet.supra.com"
         self.sender = Account.generate()
 
         client_config = ClientConfig(
@@ -1305,9 +1305,6 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
         """Test all automation transaction methods"""
         await asyncio.sleep(3)
 
-        # Get account info like TypeScript
-        account_info = await self.client.account(self.sender.address())
-
         try:
             receiver_address = self.sender.address()
             receiver_bytes = receiver_address.address
@@ -1320,10 +1317,14 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
 
             print("Creating automation transaction...")
 
+            sequence_number = await self.client.account_sequence_number(
+                self.sender.account_address
+            )
+
             # Create serialized automation transaction EXACTLY like TypeScript
             automation_raw_transaction = self.client.create_automation_registration_tx_payload_raw_tx_object(
                 sender_addr=self.sender.address(),
-                sender_sequence_number=account_info["sequence_number"],
+                sender_sequence_number=sequence_number,
                 module_addr="0000000000000000000000000000000000000000000000000000000000000001",
                 module_name="supra_account",
                 function_name="transfer",
@@ -1361,12 +1362,18 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
 
         # Test 2: Cancel automation task
         print("\n=== Testing cancel_automation_task ===")
+        sequence_number = await self.client.account_sequence_number(
+            self.sender.account_address
+        )
 
         # Test actual cancellation
         print("Testing actual cancellation...")
         try:
             cancel_result = await self.client.cancel_automation_task(
-                sender=self.sender, task_index=task_id, simulate=False
+                sender=self.sender,
+                task_index=task_id,
+                simulate=False,
+                sequence_number=sequence_number,
             )
             print(f"✓ Cancellation successful: {cancel_result}")
         except Exception as e:
@@ -1376,6 +1383,9 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
 
         # Test 3: Stop automation tasks
         print("\n=== Testing stop_automation_tasks ===")
+        sequence_number = await self.client.account_sequence_number(
+            self.sender.account_address
+        )
 
         print("Testing actual stop tasks...")
         try:
@@ -1383,6 +1393,7 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
                 sender=self.sender,
                 task_indexes=[1],
                 simulate=False,
+                sequence_number=sequence_number,
             )
             print(f"✓ Stop tasks successful: {stop_result}")
         except Exception as e:
@@ -1393,7 +1404,6 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
     async def test_automation_transactions_simulation(self):
         """Test all automation transaction methods"""
         await asyncio.sleep(3)
-        account_info = await self.client.account(self.sender.address())
 
         try:
             receiver_address = self.sender.address()
@@ -1406,11 +1416,14 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
             chain_id = await self.client.chain_id()
 
             print("Creating automation transaction...")
+            sequence_number = await self.client.account_sequence_number(
+                self.sender.account_address
+            )
 
             # Create serialized automation transaction EXACTLY like TypeScript
             automation_raw_transaction = self.client.create_automation_registration_tx_payload_raw_tx_object(
                 sender_addr=self.sender.address(),
-                sender_sequence_number=account_info["sequence_number"],
+                sender_sequence_number=sequence_number,
                 module_addr="0000000000000000000000000000000000000000000000000000000000000001",
                 module_name="supra_account",
                 function_name="transfer",
@@ -1449,12 +1462,18 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
 
         # Test 2: Cancel automation task
         print("\n=== Testing cancel_automation_task ===")
+        sequence_number = await self.client.account_sequence_number(
+            self.sender.account_address
+        )
 
         # Test simulation first
         print("Testing cancellation simulation...")
         try:
             sim_result = await self.client.cancel_automation_task(
-                sender=self.sender, task_index=task_id, simulate=True
+                sender=self.sender,
+                task_index=task_id,
+                simulate=True,
+                sequence_number=sequence_number,
             )
             print(f"✓ Cancellation simulation successful: {sim_result}")
         except Exception as e:
@@ -1465,6 +1484,9 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
 
         # Test 3: Stop automation tasks
         print("\n=== Testing stop_automation_tasks ===")
+        sequence_number = await self.client.account_sequence_number(
+            self.sender.account_address
+        )
 
         # Test simulation first
         print("Testing stop tasks simulation...")
@@ -1473,6 +1495,7 @@ class AutomationTest(unittest.IsolatedAsyncioTestCase):
                 sender=self.sender,
                 task_indexes=[1],
                 simulate=True,
+                sequence_number=sequence_number,
             )
             print(f"✓ Stop tasks simulation successful: {sim_result}")
         except Exception as e:

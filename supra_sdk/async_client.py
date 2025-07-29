@@ -710,7 +710,7 @@ class RestClient:
             try:
                 txn_data = await self.transaction_by_hash(txn_hash)
                 # If status is not pending, return the transaction data (success or failure)
-                if txn_data.get("status") != "pending_transaction":
+                if txn_data.get("status") != "Pending":
                     return txn_data
             except ApiError as e:
                 if e.status_code != HTTPStatus.NOT_FOUND:
@@ -1019,8 +1019,7 @@ class RestClient:
             signed_txn = SignedTransaction(
                 transaction=raw_transaction, authenticator=authenticator
             )
-            sim_res = await self.simulate_bcs_txn(signed_txn)
-            print("Simulation Result:> ", sim_res["status"])
+            _sim_res = await self.simulate_bcs_txn(signed_txn)
             print("Transaction Simulation Done")
 
         signature = sender.sign(raw_transaction.keyed())
@@ -1093,21 +1092,24 @@ class RestClient:
             authenticator = Authenticator(ed25519_auth)
             signed_transaction = SignedTransaction(raw_txn, authenticator)
 
-            sim_res = await self.simulate_bcs_txn(transaction_data=signed_transaction)
-            print("Simulation Result:> ", sim_res["status"])
+            _sim_res = await self.simulate_bcs_txn(transaction_data=signed_transaction)
 
             signed_transaction = await self.create_bcs_signed_transaction(
                 sender, TransactionPayload(payload), sequence_number=sequence_number
             )
 
-            return await self.submit_bcs_txn(signed_transaction)
+            txn_hash = await self.submit_bcs_txn(signed_transaction)
+            await self.wait_for_transaction(txn_hash)
+            return txn_hash
 
         else:
             signed_transaction = await self.create_bcs_signed_transaction(
                 sender, TransactionPayload(payload), sequence_number=sequence_number
             )
 
-            return await self.submit_bcs_txn(signed_transaction)
+            txn_hash = await self.submit_bcs_txn(signed_transaction)
+            await self.wait_for_transaction(txn_hash)
+            return txn_hash
 
     async def stop_automation_tasks(
         self,
@@ -1162,21 +1164,24 @@ class RestClient:
             authenticator = Authenticator(ed25519_auth)
             signed_transaction = SignedTransaction(raw_txn, authenticator)
 
-            sim_res = await self.simulate_bcs_txn(transaction_data=signed_transaction)
-            print("Simulation Result:> ", sim_res["status"])
+            _sim_res = await self.simulate_bcs_txn(transaction_data=signed_transaction)
 
             signed_transaction = await self.create_bcs_signed_transaction(
                 sender, TransactionPayload(payload), sequence_number=sequence_number
             )
 
-            return await self.submit_bcs_txn(signed_transaction)
+            txn_hash = await self.submit_bcs_txn(signed_transaction)
+            await self.wait_for_transaction(txn_hash)
+            return txn_hash
 
         else:
             signed_transaction = await self.create_bcs_signed_transaction(
                 sender, TransactionPayload(payload), sequence_number=sequence_number
             )
 
-            return await self.submit_bcs_txn(signed_transaction)
+            txn_hash = await self.submit_bcs_txn(signed_transaction)
+            await self.wait_for_transaction(txn_hash)
+            return txn_hash
 
     # :!:>bcs_transfer
     async def bcs_transfer(
@@ -1589,7 +1594,6 @@ class RestClient:
 
         headers = headers or {}
         if isinstance(data, bytes):
-            headers["content-type"] = "application/x.supra.signed_transaction.bcs"
             return await self.client.post(
                 url=f"{self.base_url}/{endpoint}",
                 params=params,
@@ -1817,11 +1821,12 @@ class ResourceNotFound(Exception):
 
 class AccountTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        # local network
-        self.base_url = "http://localhost:27000"
-        self.faucet_url = "http://localhost:27001"
+        # test network
+        self.base_url = "https://rpc-testnet.supra.com"
+        self.faucet_url = "https://rpc-testnet.supra.com"
+
         self.test_account = Account.generate()
-        self.test_account_address = self.test_account.account_address.__str__()
+        self.test_account_address = f"{self.test_account.account_address}"
         self.bad_address = (
             "1ac1a26e27b175ebf3132e255f97182408442bef0879679626211e45f33dbf88"
         )
@@ -1843,7 +1848,8 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
     async def test_chain_id(self):
         res = await self.client.chain_id()
         self.assertIsInstance(res, int, "FAIL: ChainId wrong data-type")
-        self.assertEqual(res, 255, "FAIL: ChainId value incorrect")
+        # testnet ChainId = 6
+        self.assertEqual(res, 6, "FAIL: ChainId value incorrect")
 
     async def test_account(self):
         # invalid test case
@@ -1991,19 +1997,17 @@ class AccountTest(unittest.IsolatedAsyncioTestCase):
 
 class TransactionTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        # local network
-        self.base_url = "http://localhost:27000"
-        self.faucet_url = "http://localhost:27001"
+        # test network
+        self.base_url = "https://rpc-testnet.supra.com"
+        self.faucet_url = "https://rpc-testnet.supra.com"
 
         self.test_account = Account.generate()
         self.test_signer_account = Account.generate()
         self.test_authenticator_account = Account.generate()
-        self.test_account_address = self.test_account.account_address.__str__()[2:]
-        self.test_signer_address = self.test_signer_account.account_address.__str__()[
-            2:
-        ]
+        self.test_account_address = f"{self.test_account.account_address}"[2:]
+        self.test_signer_address = f"{self.test_signer_account.account_address}"[2:]
         self.test_authenticator_address = (
-            self.test_authenticator_account.account_address.__str__()[2:]
+            f"{self.test_authenticator_account.account_address}"[2:]
         )
 
         # Make client
@@ -2029,10 +2033,6 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
             address=AccountAddress(bytes.fromhex(self.test_account_address))
         )
         await self.client.wait_for_transaction(faucet_response_3["Accepted"])
-        faucet_response_4 = await self.faucet_client.faucet(
-            address=self.test_account.account_address
-        )
-        await self.client.wait_for_transaction(faucet_response_4["Accepted"])
 
     async def test_estimate_gas_price(self):
         res = await self.client.estimate_gas_price()
@@ -2507,8 +2507,8 @@ class TransactionTest(unittest.IsolatedAsyncioTestCase):
 
 class BlockTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        # local network
-        self.base_url = "http://localhost:27000"
+        # test network
+        self.base_url = "https://rpc-testnet.supra.com"
 
         # Make client
         self.client_config = ClientConfig(
@@ -2578,12 +2578,10 @@ class BlockTest(unittest.IsolatedAsyncioTestCase):
 
 class TablesTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        # local network
-        self.base_url = "http://localhost:27000"
-        self.faucet_url = "http://localhost:27001"
-        self.test_address = (
-            "88FBD33F54E1126269769780FEB24480428179F552E2313FBE571B72E62A1CA1"
-        )
+        # test network
+        self.base_url = "https://rpc-testnet.supra.com"
+        self.faucet_url = "https://rpc-testnet.supra.com"
+        self.test_account = Account.generate()
 
         # Make client
         self.client_config = ClientConfig(
@@ -2597,7 +2595,7 @@ class TablesTest(unittest.IsolatedAsyncioTestCase):
         # Make faucet trnsaction(Will make a test account)
         self.faucet_client = FaucetClient(self.faucet_url, self.client)
         faucet_response = await self.faucet_client.faucet(
-            address=AccountAddress(bytes.fromhex(self.test_address))
+            address=self.test_account.account_address
         )
         await self.client.wait_for_transaction(faucet_response["Accepted"])
 
@@ -2610,10 +2608,10 @@ class TablesTest(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaises(Exception) as cm:
             _res = await self.client.table_items_by_key(
-                table_handle=AccountAddress(bytes.fromhex(self.test_address)),
+                table_handle=self.test_account.account_address,
                 table_item_request=tir,
             )
-        self.assertIn(self.test_address.lower(), str(cm.exception))
+        self.assertIn(str(self.test_account.account_address).lower(), str(cm.exception))
 
     async def asyncTearDown(self):
         await self.client.close()
@@ -2622,7 +2620,7 @@ class TablesTest(unittest.IsolatedAsyncioTestCase):
 
 class ViewTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.base_url = "http://localhost:27001"
+        self.base_url = "https://rpc-testnet.supra.com"
         self.client_config = ClientConfig(
             expiration_ttl=600,
             gas_unit_price=100,
@@ -2644,7 +2642,7 @@ class ViewTest(unittest.IsolatedAsyncioTestCase):
 
 class EventsTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.base_url = "http://localhost:27001"
+        self.base_url = "https://rpc-testnet.supra.com"
         self.client_config = ClientConfig(
             expiration_ttl=600,
             gas_unit_price=100,
@@ -2665,10 +2663,8 @@ class EventsTest(unittest.IsolatedAsyncioTestCase):
 
 class FaucetTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.base_url = "http://localhost:27001"
-        self.test_address = (
-            "88FBD33F54E1126269769780FEB24480428179F552E2313FBE571B72E62A1CA1"
-        )
+        self.base_url = "https://rpc-testnet.supra.com"
+        self.test_account = Account.generate()
 
         self.client_config = ClientConfig(
             expiration_ttl=600,
@@ -2681,16 +2677,12 @@ class FaucetTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_faucet(self):
-        res = await self.client.faucet(
-            address=AccountAddress(bytes.fromhex(self.test_address))
-        )
+        res = await self.client.faucet(address=self.test_account.account_address)
         self.assertIsInstance(res, dict, "FAIL: wrong result data-type")
         self.assertGreater(len(res["Accepted"]), 0, "FAIL: Must return a hash")
 
     async def test_faucet_txn_by_hash(self):
-        res = await self.client.faucet(
-            address=AccountAddress(bytes.fromhex(self.test_address))
-        )
+        res = await self.client.faucet(address=self.test_account.account_address)
         hash = res["Accepted"]
 
         res = await self.client.faucet_transaction_by_hash(hash=hash)
