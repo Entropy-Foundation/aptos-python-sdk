@@ -12,8 +12,12 @@ from supra_sdk.account_address import AccountAddress
 from supra_sdk.account_sequence_number import AccountSequenceNumber
 from supra_sdk.async_client import FaucetClient, RestClient
 from supra_sdk.bcs import Serializer
-from supra_sdk.transactions import (EntryFunction, SignedTransaction,
-                                    TransactionArgument, TransactionPayload)
+from supra_sdk.transactions import (
+    EntryFunction,
+    SignedTransaction,
+    TransactionArgument,
+    TransactionPayload,
+)
 
 
 class TransactionWorker:
@@ -197,8 +201,8 @@ class Test(unittest.IsolatedAsyncioTestCase):
         submit_txn_patcher.start()
 
         account = Account.generate()
-        rest_client = RestClient("http://localhost:27001")
-        faucet = FaucetClient("http://localhost:27001", rest_client)
+        rest_client = RestClient("https://rpc-testnet.supra.com")
+        faucet = FaucetClient("https://rpc-testnet.supra.com", rest_client)
         await faucet.faucet(address=account.account_address)
         max_retries = 30
         for attempt in range(max_retries):

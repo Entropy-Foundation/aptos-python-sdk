@@ -178,7 +178,7 @@ class Test(unittest.IsolatedAsyncioTestCase):
         )
         patcher.start()
 
-        rest_client = RestClient("http://localhost:27001")
+        rest_client = RestClient("https://rpc-testnet.supra.com")
         account_sequence_number = AccountSequenceNumber(
             rest_client, AccountAddress.from_str("0xf")
         )
