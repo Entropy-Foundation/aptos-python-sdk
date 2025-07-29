@@ -190,13 +190,6 @@ async def main(should_wait_input=True):
     print(f"Deedee's address:    {deedee.address()}")
     print(f"Deedee's public key: {deedee.public_key()}")
 
-    # deedee_start = 50_000_000
-    deedee_data = {
-        "function": "0x1::coin::balance",
-        "type_arguments": ["0x1::supra_coin::SupraCoin"],
-        "arguments": [f"{deedee.address().__str__()}"],
-    }
-
     await faucet_client.faucet(deedee.address())
     deedee_balance = await rest_client.account_balance(deedee.address())
     print(f"Deedee's balance:    {deedee_balance}")  # <:!:section_7

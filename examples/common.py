@@ -11,7 +11,7 @@ SUPRA_CORE_PATH = os.getenv(
 # :!:>section_1
 FAUCET_URL = os.getenv(
     "SUPRA_FAUCET_URL",
-    "http://localhost:27001",
+    "https://rpc-testnet.supra.com",
 )
-NODE_URL = os.getenv("SUPRA_NODE_URL", "http://localhost:27000")
+NODE_URL = os.getenv("SUPRA_NODE_URL", "https://rpc-testnet.supra.com")
 # <:!:section_1
