@@ -1,24 +1,27 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
-
 from typing import Any
 
-from .account import Account
-from .account_address import AccountAddress
-from .async_client import ApiError, RestClient
-from .bcs import Serializer
-from .transactions import EntryFunction, TransactionArgument, TransactionPayload
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import ApiError, RestClient
+from supra_sdk.bcs import Serializer
+from supra_sdk.transactions import (
+    EntryFunction,
+    TransactionArgument,
+    TransactionPayload,
+)
 
 U64_MAX = 18446744073709551615
 
 
-class AptosTokenV1Client:
-    """A wrapper around reading and mutating AptosTokens also known as Token Objects"""
+class SupraTokenV1Client:
+    """A wrapper around reading and mutating SupraTokens also known as Token Objects"""
 
-    _client: RestClient
+    client: RestClient
 
     def __init__(self, client: RestClient):
-        self._client = client
+        self.client = client
 
     async def create_collection(
         self, account: Account, name: str, description: str, uri: str
@@ -42,10 +45,10 @@ class AptosTokenV1Client:
             transaction_arguments,
         )
 
-        signed_transaction = await self._client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             account, TransactionPayload(payload)
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def create_token(
         self,
@@ -85,10 +88,10 @@ class AptosTokenV1Client:
             [],
             transaction_arguments,
         )
-        signed_transaction = await self._client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             account, TransactionPayload(payload)
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def offer_token(
         self,
@@ -115,10 +118,10 @@ class AptosTokenV1Client:
             [],
             transaction_arguments,
         )
-        signed_transaction = await self._client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             account, TransactionPayload(payload)
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def claim_token(
         self,
@@ -143,10 +146,10 @@ class AptosTokenV1Client:
             [],
             transaction_arguments,
         )
-        signed_transaction = await self._client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             account, TransactionPayload(payload)
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def direct_transfer_token(
         self,
@@ -173,16 +176,16 @@ class AptosTokenV1Client:
             transaction_arguments,
         )
 
-        signed_transaction = await self._client.create_multi_agent_bcs_transaction(
+        signed_transaction = await self.client.create_multi_agent_transaction(
             sender,
             [receiver],
             TransactionPayload(payload),
         )
-        return await self._client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
-    #
-    # Token accessors
-    #
+    """
+    Token accessors
+    """
 
     async def get_token(
         self,
@@ -192,9 +195,8 @@ class AptosTokenV1Client:
         token_name: str,
         property_version: int,
     ) -> Any:
-        resource = await self._client.account_resource(owner, "0x3::token::TokenStore")
+        resource = await self.client.account_resource(owner, "0x3::token::TokenStore")
         token_store_handle = resource["data"]["tokens"]["handle"]
-
         token_id = {
             "token_data_id": {
                 "creator": str(creator),
@@ -205,7 +207,7 @@ class AptosTokenV1Client:
         }
 
         try:
-            return await self._client.get_table_item(
+            return await self.client.get_table_item(
                 token_store_handle,
                 "0x3::token::TokenId",
                 "0x3::token::Token",
@@ -239,56 +241,32 @@ class AptosTokenV1Client:
         token_name: str,
         property_version: int,
     ) -> Any:
-        resource = await self._client.account_resource(
+        resource = await self.client.account_resource(
             creator, "0x3::token::Collections"
         )
         token_data_handle = resource["data"]["token_data"]["handle"]
-
         token_data_id = {
             "creator": str(creator),
             "collection": collection_name,
             "name": token_name,
         }
-
-        return await self._client.get_table_item(
+        return await self.client.get_table_item(
             token_data_handle,
             "0x3::token::TokenDataId",
             "0x3::token::TokenData",
             token_data_id,
-        )  # <:!:read_token_data_table
+        )
 
     async def get_collection(
         self, creator: AccountAddress, collection_name: str
     ) -> Any:
-        resource = await self._client.account_resource(
+        resource = await self.client.account_resource(
             creator, "0x3::token::Collections"
         )
         token_data = resource["data"]["collection_data"]["handle"]
-
-        return await self._client.get_table_item(
+        return await self.client.get_table_item(
             token_data,
             "0x1::string::String",
             "0x3::token::CollectionData",
             collection_name,
         )
-
-    async def transfer_object(
-        self, owner: Account, object: AccountAddress, to: AccountAddress
-    ) -> str:
-        transaction_arguments = [
-            TransactionArgument(object, Serializer.struct),
-            TransactionArgument(to, Serializer.struct),
-        ]
-
-        payload = EntryFunction.natural(
-            "0x1::object",
-            "transfer_call",
-            [],
-            transaction_arguments,
-        )
-
-        signed_transaction = await self._client.create_bcs_signed_transaction(
-            owner,
-            TransactionPayload(payload),
-        )
-        return await self._client.submit_bcs_transaction(signed_transaction)

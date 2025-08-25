@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -7,8 +7,8 @@ import typing
 import unittest
 from typing import List, Tuple
 
-from .account_address import AccountAddress
-from .bcs import Deserializable, Deserializer, Serializable, Serializer
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.bcs import Deserializable, Deserializer, Serializable, Serializer
 
 
 class TypeTag(Deserializable, Serializable):

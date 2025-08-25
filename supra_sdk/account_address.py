@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -7,8 +7,8 @@ import hashlib
 import unittest
 from dataclasses import dataclass
 
-from . import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519
-from .bcs import Deserializer, Serializer
+from supra_sdk import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519
+from supra_sdk.bcs import Deserializer, Serializer
 
 
 class AuthKeyScheme:
@@ -16,9 +16,9 @@ class AuthKeyScheme:
     MultiEd25519: bytes = b"\x01"
     SingleKey: bytes = b"\x02"
     MultiKey: bytes = b"\x03"
-    DeriveObjectAddressFromGuid: bytes = b"\xFD"
-    DeriveObjectAddressFromSeed: bytes = b"\xFE"
-    DeriveResourceAccountAddress: bytes = b"\xFF"
+    DeriveObjectAddressFromGuid: bytes = b"\xfd"
+    DeriveObjectAddressFromSeed: bytes = b"\xfe"
+    DeriveResourceAccountAddress: bytes = b"\xff"
 
 
 class ParseAddressError(Exception):

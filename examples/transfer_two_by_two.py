@@ -1,14 +1,13 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import os
 
-from aptos_sdk.account import Account
-from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.transactions import Script, ScriptArgument, TransactionPayload
-
-from .common import FAUCET_URL, NODE_URL
+from examples.common import FAUCET_URL, NODE_URL
+from supra_sdk.account import Account
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.transactions import Script, ScriptArgument, TransactionPayload
 
 
 async def main():
@@ -20,25 +19,20 @@ async def main():
     carol = Account.generate()
     david = Account.generate()
 
-    print("\n=== Addresses ===")
-    print(f"Alice: {alice.address()}")
-    print(f"Bob: {bob.address()}")
-    print(f"Carol: {carol.address()}")
-    print(f"David: {david.address()}")
+    print(f"Alice account address: {alice.address()}")
+    print(f"Bob account address: {bob.address()}")
+    print(f"Carol account address: {carol.address()}")
+    print(f"David account address: {david.address()}")
 
-    alice_fund = faucet_client.fund_account(alice.address(), 100_000_000)
-    bob_fund = faucet_client.fund_account(bob.address(), 100_000_000)
-    carol_fund = faucet_client.fund_account(carol.address(), 0)
-    david_fund = faucet_client.fund_account(david.address(), 0)
-    await asyncio.gather(*[alice_fund, bob_fund, carol_fund, david_fund])
+    await faucet_client.faucet(alice.address())
+    await faucet_client.faucet(bob.address())
+    await faucet_client.faucet(carol.address())
+    await faucet_client.faucet(david.address())
 
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    carol_balance = rest_client.account_balance(carol.address())
-    david_balance = rest_client.account_balance(david.address())
-    [alice_balance, bob_balance, carol_balance, david_balance] = await asyncio.gather(
-        *[alice_balance, bob_balance, carol_balance, david_balance]
-    )
+    alice_balance = await rest_client.account_supra_balance(alice.address())
+    bob_balance = await rest_client.account_supra_balance(bob.address())
+    carol_balance = await rest_client.account_supra_balance(carol.address())
+    david_balance = await rest_client.account_supra_balance(david.address())
 
     print("\n=== Initial Balances ===")
     print(f"Alice: {alice_balance}")
@@ -59,18 +53,16 @@ async def main():
         ScriptArgument(ScriptArgument.U64, 50),
     ]
 
-    payload = TransactionPayload(Script(code, [], script_arguments))
-    txn = await rest_client.create_multi_agent_bcs_transaction(alice, [bob], payload)
-    txn_hash = await rest_client.submit_bcs_transaction(txn)
-    await rest_client.wait_for_transaction(txn_hash)
-
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    carol_balance = rest_client.account_balance(carol.address())
-    david_balance = rest_client.account_balance(david.address())
-    [alice_balance, bob_balance, carol_balance, david_balance] = await asyncio.gather(
-        *[alice_balance, bob_balance, carol_balance, david_balance]
+    transaction_payload = TransactionPayload(Script(code, [], script_arguments))
+    signed_transaction = await rest_client.create_multi_agent_transaction(
+        alice, [bob], transaction_payload
     )
+    await rest_client.submit_transaction(signed_transaction)
+
+    alice_balance = await rest_client.account_supra_balance(alice.address())
+    bob_balance = await rest_client.account_supra_balance(bob.address())
+    carol_balance = await rest_client.account_supra_balance(carol.address())
+    david_balance = await rest_client.account_supra_balance(david.address())
 
     print("\n=== Final Balances ===")
     print(f"Alice: {alice_balance}")
@@ -79,6 +71,7 @@ async def main():
     print(f"David: {david_balance}")
 
     await rest_client.close()
+    await faucet_client.close()
 
 
 if __name__ == "__main__":

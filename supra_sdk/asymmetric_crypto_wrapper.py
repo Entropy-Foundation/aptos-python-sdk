@@ -1,17 +1,16 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
 from typing import List, Tuple, cast
 
-from . import asymmetric_crypto, ed25519, secp256k1_ecdsa
-from .bcs import Deserializer, Serializer
+from supra_sdk import asymmetric_crypto, ed25519
+from supra_sdk.bcs import Deserializer, Serializer
 
 
 class PublicKey(asymmetric_crypto.PublicKey):
     ED25519: int = 0
-    SECP256K1_ECDSA: int = 1
 
     variant: int
     public_key: asymmetric_crypto.PublicKey
@@ -19,16 +18,14 @@ class PublicKey(asymmetric_crypto.PublicKey):
     def __init__(self, public_key: asymmetric_crypto.PublicKey):
         if isinstance(public_key, ed25519.PublicKey):
             self.variant = PublicKey.ED25519
-        elif isinstance(public_key, secp256k1_ecdsa.PublicKey):
-            self.variant = PublicKey.SECP256K1_ECDSA
         else:
             raise NotImplementedError()
         self.public_key = public_key
 
     def to_crypto_bytes(self) -> bytes:
-        ser = Serializer()
-        self.serialize(ser)
-        return ser.output()
+        serializer = Serializer()
+        self.serialize(serializer)
+        return serializer.output()
 
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         # Convert signature to the original signature
@@ -44,8 +41,6 @@ class PublicKey(asymmetric_crypto.PublicKey):
             public_key: asymmetric_crypto.PublicKey = ed25519.PublicKey.deserialize(
                 deserializer
             )
-        elif variant == Signature.SECP256K1_ECDSA:
-            public_key = secp256k1_ecdsa.PublicKey.deserialize(deserializer)
         else:
             raise Exception(f"Invalid type: {variant}")
 
@@ -58,7 +53,6 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
 class Signature(asymmetric_crypto.Signature):
     ED25519: int = 0
-    SECP256K1_ECDSA: int = 1
 
     variant: int
     signature: asymmetric_crypto.Signature
@@ -66,11 +60,15 @@ class Signature(asymmetric_crypto.Signature):
     def __init__(self, signature: asymmetric_crypto.Signature):
         if isinstance(signature, ed25519.Signature):
             self.variant = Signature.ED25519
-        elif isinstance(signature, secp256k1_ecdsa.Signature):
-            self.variant = Signature.SECP256K1_ECDSA
         else:
             raise NotImplementedError()
         self.signature = signature
+
+    def get_null_signature(self) -> Signature:
+        if self.variant:
+            return Signature(ed25519.Signature.get_null_signature())
+        else:
+            raise NotImplementedError()
 
     @staticmethod
     def deserialize(deserializer: Deserializer) -> Signature:
@@ -80,8 +78,6 @@ class Signature(asymmetric_crypto.Signature):
             signature: asymmetric_crypto.Signature = ed25519.Signature.deserialize(
                 deserializer
             )
-        elif variant == Signature.SECP256K1_ECDSA:
-            signature = secp256k1_ecdsa.Signature.deserialize(deserializer)
         else:
             raise Exception(f"Invalid type: {variant}")
 
@@ -214,6 +210,10 @@ class MultiSignature(asymmetric_crypto.Signature):
         serializer.sequence(actual_sigs, Serializer.struct)
         serializer.uleb128(self.BITMAP_NUM_OF_BYTES)
         serializer.u32(bitmap)
+
+    def unset_signatures(self):
+        for i, (pubkey_index, signature) in enumerate(self.signatures):
+            self.signatures[i] = (pubkey_index, signature.get_null_signature())
 
 
 def index_to_bitmap_value(i: int) -> int:

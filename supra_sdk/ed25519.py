@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -8,8 +8,8 @@ from typing import List, Tuple, cast
 
 from nacl.signing import SigningKey, VerifyKey
 
-from . import asymmetric_crypto
-from .bcs import Deserializer, Serializer
+from supra_sdk import asymmetric_crypto
+from supra_sdk.bcs import Deserializer, Serializer
 
 
 class PrivateKey(asymmetric_crypto.PrivateKey):
@@ -181,6 +181,10 @@ class Signature(asymmetric_crypto.Signature):
     def __str__(self) -> str:
         return f"0x{self.signature.hex()}"
 
+    @staticmethod
+    def get_null_signature() -> Signature:
+        return Signature(bytes(Signature.LENGTH))
+
     def data(self) -> bytes:
         return self.signature
 
@@ -263,6 +267,11 @@ class MultiSignature(asymmetric_crypto.Signature):
             bitmap.to_bytes(MultiSignature.BITMAP_NUM_OF_BYTES, "big")
         )
         serializer.to_bytes(signature_bytes)
+
+    def unset_signatures(self):
+        null_signature = Signature.get_null_signature()
+        for i, (pubkey_index, _signature) in enumerate(self.signatures):
+            self.signatures[i] = (pubkey_index, null_signature)
 
 
 class Test(unittest.TestCase):
@@ -356,6 +365,11 @@ class Test(unittest.TestCase):
         self.assertEqual(multisig_signature_deserialized, multisig_signature)
 
         self.assertTrue(multisig_public_key.verify(b"multisig", multisig_signature))
+
+        multisig_signature.unset_signatures()
+        null_signature = Signature.get_null_signature()
+        for signature in multisig_signature.signatures:
+            self.assertEqual(signature[1], null_signature)
 
     def test_multisig_range_checks(self):
         # Generate public keys.

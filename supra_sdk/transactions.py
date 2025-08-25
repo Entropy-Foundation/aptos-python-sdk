@@ -1,8 +1,8 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 """
-This translates Aptos transactions to and from BCS for signing and submitting to the REST API.
+This translates Supra transactions to and from BCS for signing and submitting to the REST API.
 """
 
 from __future__ import annotations
@@ -13,9 +13,9 @@ from typing import Any, Callable, List, Optional, Union, cast
 
 from typing_extensions import Protocol
 
-from . import asymmetric_crypto, ed25519, secp256k1_ecdsa
-from .account_address import AccountAddress
-from .authenticator import (
+from supra_sdk import asymmetric_crypto, ed25519
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.authenticator import (
     AccountAuthenticator,
     Authenticator,
     Ed25519Authenticator,
@@ -24,16 +24,16 @@ from .authenticator import (
     SingleKeyAuthenticator,
     SingleSenderAuthenticator,
 )
-from .bcs import Deserializable, Deserializer, Serializable, Serializer
-from .type_tag import StructTag, TypeTag
+from supra_sdk.bcs import Deserializable, Deserializer, Serializable, Serializer
+from supra_sdk.type_tag import StructTag, TypeTag
 
 
 class RawTransactionInternal(Protocol):
     def keyed(self) -> bytes:
-        ser = Serializer()
-        self.serialize(ser)
+        serializer = Serializer()
+        self.serialize(serializer)
         prehash = bytearray(self.prehash())
-        prehash.extend(ser.output())
+        prehash.extend(serializer.output())
         return bytes(prehash)
 
     def prehash(self) -> bytes: ...
@@ -54,10 +54,6 @@ class RawTransactionInternal(Protocol):
         if isinstance(key, ed25519.PublicKey):
             return AccountAuthenticator(
                 Ed25519Authenticator(key, ed25519.Signature(b"\x00" * 64))
-            )
-        elif isinstance(key, secp256k1_ecdsa.PublicKey):
-            return AccountAuthenticator(
-                SingleKeyAuthenticator(key, secp256k1_ecdsa.Signature(b"\x00" * 64))
             )
         else:
             raise NotImplementedError()
@@ -92,7 +88,7 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
     gas_unit_price: int
     # Expiration timestamp for this transaction, represented as seconds from the Unix epoch.
     expiration_timestamps_secs: int
-    # Chain ID of the Aptos network this transaction is intended for.
+    # Chain ID of the Supra network this transaction is intended for.
     chain_id: int
 
     def __init__(
@@ -207,8 +203,9 @@ class FeePayerRawTransaction(RawTransactionWithData):
 class TransactionPayload:
     SCRIPT: int = 0
     MODULE_BUNDLE: int = 1
-    SCRIPT_FUNCTION: int = 2
+    ENTRY_FUNCTION: int = 2
     MULTISIG: int = 3
+    AUTOMATION_REGISTRATION: int = 4
 
     variant: int
     value: Any
@@ -219,11 +216,13 @@ class TransactionPayload:
         elif isinstance(payload, ModuleBundle):
             self.variant = TransactionPayload.MODULE_BUNDLE
         elif isinstance(payload, EntryFunction):
-            self.variant = TransactionPayload.SCRIPT_FUNCTION
+            self.variant = TransactionPayload.ENTRY_FUNCTION
         elif isinstance(payload, Multisig):
             self.variant = TransactionPayload.MULTISIG
+        elif isinstance(payload, AutomationRegistrationParams):
+            self.variant = TransactionPayload.AUTOMATION_REGISTRATION
         else:
-            raise Exception("Invalid type")
+            raise Exception("Invalid transaction payload type")
         self.value = payload
 
     def __eq__(self, other: object) -> bool:
@@ -242,12 +241,14 @@ class TransactionPayload:
             payload: Any = Script.deserialize(deserializer)
         elif variant == TransactionPayload.MODULE_BUNDLE:
             payload = ModuleBundle.deserialize(deserializer)
-        elif variant == TransactionPayload.SCRIPT_FUNCTION:
+        elif variant == TransactionPayload.ENTRY_FUNCTION:
             payload = EntryFunction.deserialize(deserializer)
         elif variant == TransactionPayload.MULTISIG:
             payload = Multisig.deserialize(deserializer)
+        elif variant == TransactionPayload.AUTOMATION_REGISTRATION:
+            payload = AutomationRegistrationParams.deserialize(deserializer)
         else:
-            raise Exception("Invalid type")
+            raise Exception("Invalid transaction payload type")
 
         return TransactionPayload(payload)
 
@@ -440,7 +441,7 @@ class EntryFunction:
 
 class Multisig:
     multisig_address: AccountAddress
-    transaction_payload: MultisigTransactionPayload
+    transaction_payload: Optional[MultisigTransactionPayload]
 
     def __init__(
         self,
@@ -459,11 +460,13 @@ class Multisig:
             transaction_payload = MultisigTransactionPayload.deserialize(deserializer)
         return Multisig(multisig_address, transaction_payload)
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         self.multisig_address.serialize(serializer)
-        serializer.bool(self.transaction_payload is not None)
-        if self.transaction_payload is not None:
+        if self.transaction_payload:
+            serializer.bool(True)
             self.transaction_payload.serialize(serializer)
+        else:
+            serializer.bool(False)
 
 
 class MultisigTransactionPayload:
@@ -491,11 +494,83 @@ class MultisigTransactionPayload:
             raise Exception("Invalid payload type")
         return MultisigTransactionPayload(transaction_payload)
 
-    def serialize(self, serializer: Serializer):
+    def serialize(self, serializer: Serializer) -> None:
         # As `MultisigTransactionPayload` is an enum at rust layer, We need to define the enum property number.
         # Currently, we only support `EntryFunction` hence we will always choose 0th property of the enum.
         serializer.uleb128(self.payload_variant)
         self.transaction_payload.serialize(serializer)
+
+
+class AutomationRegistrationParams:
+    V1: int = 0
+
+    variant: int
+    registration_params: Any
+
+    def __init__(self, registration_params: Any):
+        if isinstance(registration_params, AutomationRegistrationParamsV1):
+            self.variant = AutomationRegistrationParams.V1
+        else:
+            raise Exception("Invalid automation registration params type")
+        self.registration_params = registration_params
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> AutomationRegistrationParams:
+        variant = deserializer.uleb128()
+        if variant == AutomationRegistrationParams.V1:
+            registration_params = AutomationRegistrationParamsV1.deserialize(
+                deserializer
+            )
+            return AutomationRegistrationParams(registration_params)
+        else:
+            raise Exception("Invalid automation registration params type")
+
+    def serialize(self, serializer: Serializer) -> None:
+        serializer.uleb128(self.variant)
+        self.registration_params.serialize(serializer)
+
+
+class AutomationRegistrationParamsV1:
+    def __init__(
+        self,
+        automated_function: EntryFunction,
+        max_gas_amount: int,
+        gas_price_cap: int,
+        automation_fee_cap_for_epoch: int,
+        expiration_timestamp_secs: int,
+        aux_data: List[bytes],
+    ):
+        self.automated_function = automated_function
+        self.max_gas_amount = max_gas_amount
+        self.gas_price_cap = gas_price_cap
+        self.automation_fee_cap_for_epoch = automation_fee_cap_for_epoch
+        self.expiration_timestamp_secs = expiration_timestamp_secs
+        self.aux_data = aux_data
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> AutomationRegistrationParamsV1:
+        automated_function = EntryFunction.deserialize(deserializer)
+        max_gas_amount = deserializer.u64()
+        gas_price_cap = deserializer.u64()
+        automation_fee_cap_for_epoch = deserializer.u64()
+        expiration_timestamp_secs = deserializer.u64()
+        aux_data = deserializer.sequence(Deserializer.to_bytes)
+        return AutomationRegistrationParamsV1(
+            automated_function,
+            max_gas_amount,
+            gas_price_cap,
+            automation_fee_cap_for_epoch,
+            expiration_timestamp_secs,
+            aux_data,
+        )
+
+    def serialize(self, serializer: Serializer) -> None:
+        self.automated_function.serialize(serializer)
+        serializer.u64(self.max_gas_amount)
+        serializer.u64(self.gas_price_cap)
+        serializer.u64(self.automation_fee_cap_for_epoch)
+        serializer.u64(self.expiration_timestamp_secs)
+        serializer.sequence(self.aux_data, Serializer.to_bytes)
 
 
 class ModuleId:
@@ -615,6 +690,42 @@ class SignedTransaction:
         self.authenticator.serialize(serializer)
 
 
+class SupraTransaction:
+    MOVE: int = 1
+
+    variant: int
+    value: Any
+
+    def __init__(self, transaction: Any):
+        if isinstance(transaction, SignedTransaction):
+            self.variant = SupraTransaction.MOVE
+        else:
+            raise Exception("Invalid supra transaction type")
+        self.value = transaction
+
+    def __str__(self) -> str:
+        return f"SupraTransaction: {self.value}"
+
+    @staticmethod
+    def deserialize(deserializer: Deserializer) -> SupraTransaction:
+        variant = deserializer.uleb128()
+        if variant == SupraTransaction.MOVE:
+            transaction = SignedTransaction.deserialize(deserializer)
+        else:
+            raise Exception(f"Invalid supra transaction type, found variant: {variant}")
+        return SupraTransaction(transaction)
+
+    def serialize(self, serializer: Serializer) -> None:
+        serializer.uleb128(self.variant)
+        self.value.serialize(serializer)
+
+    def to_bytes(self) -> bytes:
+        """Provides BCS serialized bytes"""
+        serializer = Serializer()
+        self.serialize(serializer)
+        return serializer.output()
+
+
 class Test(unittest.TestCase):
     def test_entry_function(self):
         private_key = ed25519.PrivateKey.random()
@@ -633,7 +744,7 @@ class Test(unittest.TestCase):
         payload = EntryFunction.natural(
             "0x1::coin",
             "transfer",
-            [TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
+            [TypeTag(StructTag.from_str("0x1::supra_coin::SupraCoin"))],
             transaction_arguments,
         )
 
@@ -649,7 +760,7 @@ class Test(unittest.TestCase):
 
         authenticator = raw_transaction.sign(private_key)
         signed_transaction = SignedTransaction(raw_transaction, authenticator)
-        self.assertTrue(signed_transaction.verify())
+        self.verify_transaction_serialization_and_deserialization(signed_transaction)
 
     def test_entry_function_with_corpus(self):
         # Define common inputs
@@ -685,7 +796,7 @@ class Test(unittest.TestCase):
         payload = EntryFunction.natural(
             "0x1::coin",
             "transfer",
-            [TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
+            [TypeTag(StructTag.from_str("0x1::supra_coin::SupraCoin"))],
             transaction_arguments,
         )
 
@@ -703,14 +814,15 @@ class Test(unittest.TestCase):
         signed_transaction_generated = SignedTransaction(
             raw_transaction_generated, authenticator
         )
-        self.assertTrue(signed_transaction_generated.verify())
+        self.verify_transaction_serialization_and_deserialization(
+            signed_transaction_generated
+        )
 
         # Validated corpus
+        raw_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a73757072615f636f696e095375707261436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d20296490000000004"
+        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a73757072615f636f696e095375707261436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d202964900000000040020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a49200404ffb672206aef488d96715761a198c0f67b6f788f6a671e0c36197ea663a3ee7cf36265eaec4be75806a37ba350925bb4758ce2b7bd0e07a5f7ece49fc784d0f"
 
-        raw_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d20296490000000004"
-        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000104636f696e087472616e73666572010700000000000000000000000000000000000000000000000000000000000000010a6170746f735f636f696e094170746f73436f696e0002202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9088813000000000000d0070000000000000100000000000000d202964900000000040020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040f25b74ec60a38a1ed780fd2bef6ddb6eb4356e3ab39276c9176cdf0fcae2ab37d79b626abb43d926e91595b66503a4a3c90acbae36a28d405e308f3537af720b"
-
-        self.verify_transactions(
+        self.verify_transactions_with_corpus(
             raw_transaction_input,
             raw_transaction_generated,
             signed_transaction_input,
@@ -782,21 +894,122 @@ class Test(unittest.TestCase):
         signed_transaction_generated = SignedTransaction(
             raw_transaction_generated.inner(), authenticator
         )
-        self.assertTrue(signed_transaction_generated.verify())
+        self.verify_transaction_serialization_and_deserialization(
+            signed_transaction_generated
+        )
 
         # Validated corpus
-
         raw_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000305746f6b656e166469726563745f7472616e736665725f7363726970740004202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9100f636f6c6c656374696f6e5f6e616d650b0a746f6b656e5f6e616d65080100000000000000d0070000000000000100000000000000d20296490000000004"
-        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000305746f6b656e166469726563745f7472616e736665725f7363726970740004202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9100f636f6c6c656374696f6e5f6e616d650b0a746f6b656e5f6e616d65080100000000000000d0070000000000000100000000000000d20296490000000004020020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040343e7b10aa323c480391a5d7cd2d0cf708d51529b96b5a2be08cbb365e4f11dcc2cf0655766cf70d40853b9c395b62dad7a9f58ed998803d8bf1901ba7a7a401012d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9010020aef3f4a4b8eca1dfc343361bf8e436bd42de9259c04b8314eb8e2054dd6e82ab408a7f06e404ae8d9535b0cbbeafb7c9e34e95fe1425e4529758150a4f7ce7a683354148ad5c313ec36549e3fb29e669d90010f97467c9074ff0aec3ed87f76608"
+        signed_transaction_input = "7deeccb1080854f499ec8b4c1b213b82c5e34b925cf6875fec02d4b77adbd2d60b0000000000000002000000000000000000000000000000000000000000000000000000000000000305746f6b656e166469726563745f7472616e736665725f7363726970740004202d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9100f636f6c6c656374696f6e5f6e616d650b0a746f6b656e5f6e616d65080100000000000000d0070000000000000100000000000000d20296490000000004020020b9c6ee1630ef3e711144a648db06bbb2284f7274cfbee53ffcee503cc1a4920040334f8a9bba9897203732d87f6e835f1f7fdea0fcbfea5e90cee187395e6b5643c1e5c09b2f32c610200d5da46b3aefc7a69ac4fd06a2fb9172ca8c2785252303012d133ddd281bb6205558357cc6ac75661817e9aaeac3afebc32842759cbf7fa9010020aef3f4a4b8eca1dfc343361bf8e436bd42de9259c04b8314eb8e2054dd6e82ab40d4333493740ef2df40de4cd86fa51fc1f115e19cc806490be902323af6deb047936bdec7233dae2eeadd0618bceab7472875cbfa8b9ad0433eb145b0c2463606"
 
-        self.verify_transactions(
+        self.verify_transactions_with_corpus(
             raw_transaction_input,
             raw_transaction_generated.inner(),
             signed_transaction_input,
             signed_transaction_generated,
         )
 
-    def verify_transactions(
+    def test_fee_payer(self):
+        sender_private_key = ed25519.PrivateKey.random()
+        fee_payer_private_key = ed25519.PrivateKey.random()
+        sender_address = AccountAddress.from_key(sender_private_key.public_key())
+        fee_payer_address = AccountAddress.from_key(fee_payer_private_key.public_key())
+
+        payload = EntryFunction.natural(
+            "0x1::supra_account",
+            "transfer",
+            [],
+            [
+                TransactionArgument(AccountAddress.from_str("0x1"), Serializer.struct),
+                TransactionArgument(100, Serializer.u64),
+            ],
+        )
+        raw_transaction = RawTransaction(
+            sender_address,
+            1,
+            TransactionPayload(payload),
+            200000,
+            100,
+            1697670723,
+            1,
+        )
+
+        # Create fee payer raw transaction
+        fee_payer_raw_txn = FeePayerRawTransaction(
+            raw_transaction, [], fee_payer_address
+        )
+
+        # Sign with both accounts
+        sender_account_auth = fee_payer_raw_txn.sign(sender_private_key)
+        fee_payer_account_auth = fee_payer_raw_txn.sign(fee_payer_private_key)
+
+        # Create fee payer authenticator
+        transaction_authenticator = Authenticator(
+            FeePayerAuthenticator(
+                sender_account_auth, [], (fee_payer_address, fee_payer_account_auth)
+            )
+        )
+        signed_transaction = SignedTransaction(
+            raw_transaction, transaction_authenticator
+        )
+        self.verify_transaction_serialization_and_deserialization(signed_transaction)
+
+    def test_automation_registration(self):
+        sender_private_key = ed25519.PrivateKey.random()
+        sender_address = AccountAddress.from_key(sender_private_key.public_key())
+
+        automated_entry_function_payload = EntryFunction.natural(
+            "0x1::supra_account",
+            "transfer",
+            [],
+            [
+                TransactionArgument(AccountAddress.from_str("0x1"), Serializer.struct),
+                TransactionArgument(100, Serializer.u64),
+            ],
+        )
+        payload = AutomationRegistrationParams(
+            AutomationRegistrationParamsV1(
+                automated_entry_function_payload,
+                500,
+                100,
+                1000000,
+                1697670823,
+                [],
+            )
+        )
+        raw_transaction = RawTransaction(
+            sender_address,
+            1,
+            TransactionPayload(payload),
+            200000,
+            100,
+            1697670723,
+            1,
+        )
+
+        authenticator = raw_transaction.sign(sender_private_key)
+        signed_transaction = SignedTransaction(raw_transaction, authenticator)
+        self.verify_transaction_serialization_and_deserialization(signed_transaction)
+
+    def verify_transaction_serialization_and_deserialization(
+        self, signed_transaction: SignedTransaction
+    ):
+        self.assertTrue(signed_transaction.verify())
+
+        # Here we are verifying serialization and deserialization process.
+        serializer = Serializer()
+        signed_transaction.serialize(serializer)
+        serialized_signed_transaction = serializer.output()
+
+        deserializer = Deserializer(serialized_signed_transaction)
+        deserialized_signed_txn = deserializer.struct(SignedTransaction)
+        self.assertTrue(deserialized_signed_txn.verify())
+
+        serializer = Serializer()
+        signed_transaction.serialize(serializer)
+        self.assertEqual(serialized_signed_transaction, serializer.output())
+
+    def verify_transactions_with_corpus(
         self,
         raw_transaction_input: str,
         raw_transaction_generated: RawTransaction,
@@ -827,17 +1040,3 @@ class Test(unittest.TestCase):
 
         self.assertEqual(signed_transaction.transaction, raw_transaction)
         self.assertTrue(signed_transaction.verify())
-
-    def test_verify_fee_payer(self):
-        signed_transaction_input = "4629fa78b6a7810c6c3a45565707896944c4936a5583f9d3981c0692beb9e3fe010000000000000002915efe6647e0440f927d46e39bcb5eb040a7e567e1756e002073bc6e26f2cd230c63616e7661735f746f6b656e04647261770004205d45bb2a6f391440ba10444c7734559bd5ef9053930e3ef53d05be332518522bc90164850086008700880089008a008b008c008d008e008f0090009100920093009400950096009700980099009a009b009c009d009e009f00a000a100a200a300a400a500a600a700a800a900aa00ab00ac00ad00ae00af00b000b100b200b300b400b500b600b700b800b900ba00bb00bc00bd00be00bf00c000c100c200c300c4009f00a000a100a200a300a400a500a600a700a800a900aa00ab00ac00ad00ae00af00b000b100b200b300b400b500b600b700b800b900ba00bb00bc00bd00be00bf00c000c100c200c90164b701b701b701b701b701b701b701b701b701b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601b601130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302130213021302656400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400d030000000000640000000000000043663065000000000103002076585d13da61c3d65f786b082e75ef790be66639fa066e0fc3b6f427d6ceb89340e137736ee1a0b60e8bdac8d0c75f29f1e6c6e7378689928125ea7a13164f96244d98ed3584df98643f5db00624f0271931498ff19492558737fbd4dcd0e99c040000af621023eaa26d6f1139da3e146a43aa4757fd77552f73ceba34b00295c340ce0020c245d6e4f0ce0867b80f9b901c00be5d790ed73272f4e5126ce02a5a7d55a15c4002fbb70e7d79b536d692953e4bdc3f762b5a288839ab974f03c8597ebb1c51d1d7e0920991bd79ca8c0acd02a7fb7c38b9c1f4d7e53f19f88b130555b20ef60d"
-        der = Deserializer(bytes.fromhex(signed_transaction_input))
-        signed_txn = der.struct(SignedTransaction)
-
-        ser = Serializer()
-        signed_txn.serialize(ser)
-        self.assertEqual(ser.output().hex(), signed_transaction_input)
-
-        self.assertTrue(
-            isinstance(signed_txn.authenticator.authenticator, FeePayerAuthenticator)
-        )
-        self.assertTrue(signed_txn.verify())

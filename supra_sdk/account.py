@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -7,15 +7,15 @@ import json
 import tempfile
 import unittest
 
-from . import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519, secp256k1_ecdsa
-from .account_address import AccountAddress
-from .authenticator import AccountAuthenticator
-from .bcs import Serializer
-from .transactions import RawTransactionInternal
+from supra_sdk import asymmetric_crypto, ed25519
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.authenticator import AccountAuthenticator
+from supra_sdk.bcs import Serializer
+from supra_sdk.transactions import RawTransactionInternal
 
 
 class Account:
-    """Represents an account as well as the private, public key-pair for the Aptos blockchain."""
+    """Represents an account as well as the private, public key-pair for the Supra blockchain."""
 
     account_address: AccountAddress
     private_key: asymmetric_crypto.PrivateKey
@@ -38,13 +38,6 @@ class Account:
     def generate() -> Account:
         private_key = ed25519.PrivateKey.random()
         account_address = AccountAddress.from_key(private_key.public_key())
-        return Account(account_address, private_key)
-
-    @staticmethod
-    def generate_secp256k1_ecdsa() -> Account:
-        private_key = secp256k1_ecdsa.PrivateKey.random()
-        public_key = asymmetric_crypto_wrapper.PublicKey(private_key.public_key())
-        account_address = AccountAddress.from_key(public_key)
         return Account(account_address, private_key)
 
     @staticmethod

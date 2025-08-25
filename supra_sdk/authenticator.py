@@ -1,4 +1,4 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
@@ -6,14 +6,14 @@ from __future__ import annotations
 import typing
 from typing import List
 
-from . import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519
-from .account_address import AccountAddress
-from .bcs import Deserializer, Serializer
+from supra_sdk import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.bcs import Deserializer, Serializer
 
 
 class Authenticator:
     """
-    Each transaction submitted to the Aptos blockchain contains a `TransactionAuthenticator`.
+    Each transaction submitted to the Supra blockchain contains a `TransactionAuthenticator`.
     During transaction execution, the executor will check if every `AccountAuthenticator`'s
     signature on the transaction hash is well-formed and whether `AccountAuthenticator`'s  matches
     the `AuthenticationKey` stored under the participating signer's account address.
@@ -43,6 +43,7 @@ class Authenticator:
             raise Exception("Invalid type")
         self.authenticator = authenticator
 
+    @staticmethod
     def from_key(key: asymmetric_crypto.PublicKey) -> int:
         if isinstance(key, ed25519.PublicKey):
             return Authenticator.ED25519
@@ -86,6 +87,9 @@ class Authenticator:
     def serialize(self, serializer: Serializer):
         serializer.uleb128(self.variant)
         serializer.struct(self.authenticator)
+
+    def unset_signature(self):
+        self.authenticator.unset_signature()
 
 
 class AccountAuthenticator:
@@ -145,6 +149,9 @@ class AccountAuthenticator:
         serializer.uleb128(self.variant)
         serializer.struct(self.authenticator)
 
+    def unset_signature(self):
+        self.authenticator.unset_signature()
+
 
 class Ed25519Authenticator:
     public_key: ed25519.PublicKey
@@ -175,6 +182,9 @@ class Ed25519Authenticator:
     def serialize(self, serializer: Serializer):
         serializer.struct(self.public_key)
         serializer.struct(self.signature)
+
+    def unset_signature(self):
+        self.signature = ed25519.Signature.get_null_signature()
 
 
 class FeePayerAuthenticator:
@@ -239,6 +249,12 @@ class FeePayerAuthenticator:
         serializer.struct(self.fee_payer[0])
         serializer.struct(self.fee_payer[1])
 
+    def unset_signature(self):
+        self.sender.unset_signature()
+        self.fee_payer[1].unset_signature()
+        for signer in self.secondary_signers:
+            signer[1].unset_signature()
+
 
 class MultiAgentAuthenticator:
     sender: AccountAuthenticator
@@ -284,6 +300,11 @@ class MultiAgentAuthenticator:
         serializer.sequence([x[0] for x in self.secondary_signers], Serializer.struct)
         serializer.sequence([x[1] for x in self.secondary_signers], Serializer.struct)
 
+    def unset_signature(self):
+        self.sender.unset_signature()
+        for signer in self.secondary_signers:
+            signer[1].unset_signature()
+
 
 class MultiEd25519Authenticator:
     public_key: ed25519.MultiPublicKey
@@ -303,6 +324,9 @@ class MultiEd25519Authenticator:
     def serialize(self, serializer: Serializer):
         serializer.struct(self.public_key)
         serializer.struct(self.signature)
+
+    def unset_signature(self):
+        self.signature.unset_signatures()
 
 
 class SingleSenderAuthenticator:
@@ -329,6 +353,9 @@ class SingleSenderAuthenticator:
 
     def serialize(self, serializer: Serializer):
         serializer.struct(self.sender)
+
+    def unset_signature(self):
+        self.sender.unset_signature()
 
 
 class SingleKeyAuthenticator:
@@ -363,6 +390,9 @@ class SingleKeyAuthenticator:
         serializer.struct(self.public_key)
         serializer.struct(self.signature)
 
+    def unset_signature(self):
+        self.signature = self.signature.get_null_signature()
+
 
 class MultiKeyAuthenticator:
     public_key: asymmetric_crypto_wrapper.MultiPublicKey
@@ -388,3 +418,6 @@ class MultiKeyAuthenticator:
     def serialize(self, serializer: Serializer):
         serializer.struct(self.public_key)
         serializer.struct(self.signature)
+
+    def unset_signature(self):
+        self.signature.unset_signatures()

@@ -1,11 +1,11 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
 from typing_extensions import Protocol
 
-from .bcs import Deserializable, Serializable
+from supra_sdk.bcs import Deserializable, Serializable
 
 
 class PrivateKey(Deserializable, Serializable, Protocol):

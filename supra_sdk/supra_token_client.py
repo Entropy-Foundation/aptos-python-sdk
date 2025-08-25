@@ -1,16 +1,21 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
 from typing import Any, List, Tuple
 
-from .account import Account
-from .account_address import AccountAddress
-from .async_client import RestClient
-from .bcs import Deserializer, Serializer
-from .transactions import EntryFunction, TransactionArgument, TransactionPayload
-from .type_tag import StructTag, TypeTag
+from supra_sdk.account import Account
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.api_types import Pagination
+from supra_sdk.async_client import RestClient
+from supra_sdk.bcs import Deserializer, Serializer
+from supra_sdk.transactions import (
+    EntryFunction,
+    TransactionArgument,
+    TransactionPayload,
+)
+from supra_sdk.type_tag import StructTag, TypeTag
 
 
 class Object:
@@ -280,7 +285,7 @@ class PropertyMap:
             types.append(prop.property_type)
             values.append(prop.serialize_value())
 
-        return (names, types, values)
+        return names, types, values
 
     @staticmethod
     def parse(resource: dict[str, Any]) -> PropertyMap:
@@ -320,23 +325,31 @@ class ReadObject:
         return response
 
 
-class AptosTokenClient:
+class SupraTokenClient:
     """A wrapper around reading and mutating Digital Assets also known as Token Objects"""
 
     client: RestClient
+
+    PAGINATION_COUNT: int = 100
 
     def __init__(self, client: RestClient):
         self.client = client
 
     async def read_object(self, address: AccountAddress) -> ReadObject:
-        resources = {}
+        all_resources = []
+        resources, cursor = None, None
+        while not resources or len(resources) == self.PAGINATION_COUNT:
+            resources, cursor = await self.client.account_resources(
+                address, Pagination(count=self.PAGINATION_COUNT, start=cursor)
+            )
+            all_resources.extend(resources)
 
-        read_resources = await self.client.account_resources(address)
-        for resource in read_resources:
+        object_resources = {}
+        for resource in all_resources:
             if resource["type"] in ReadObject.resource_map:
                 resource_obj = ReadObject.resource_map[resource["type"]]
-                resources[resource_obj] = resource_obj.parse(resource["data"])
-        return ReadObject(resources)
+                object_resources[resource_obj] = resource_obj.parse(resource["data"])
+        return ReadObject(object_resources)
 
     @staticmethod
     def create_collection_payload(
@@ -383,7 +396,6 @@ class AptosTokenClient:
 
         return TransactionPayload(payload)
 
-    # :!:>create_collection
     async def create_collection(
         self,
         creator: Account,
@@ -402,8 +414,8 @@ class AptosTokenClient:
         tokens_freezable_by_creator: bool,
         royalty_numerator: int,
         royalty_denominator: int,
-    ) -> str:  # <:!:create_collection
-        payload = AptosTokenClient.create_collection_payload(
+    ) -> str:
+        payload = SupraTokenClient.create_collection_payload(
             description,
             max_supply,
             name,
@@ -420,10 +432,10 @@ class AptosTokenClient:
             royalty_numerator,
             royalty_denominator,
         )
-        signed_transaction = await self.client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             creator, payload
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     @staticmethod
     def mint_token_payload(
@@ -459,7 +471,6 @@ class AptosTokenClient:
 
         return TransactionPayload(payload)
 
-    # :!:>mint_token
     async def mint_token(
         self,
         creator: Account,
@@ -469,13 +480,13 @@ class AptosTokenClient:
         uri: str,
         properties: PropertyMap,
     ) -> str:  # <:!:mint_token
-        payload = AptosTokenClient.mint_token_payload(
+        payload = SupraTokenClient.mint_token_payload(
             collection, description, name, uri, properties
         )
-        signed_transaction = await self.client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             creator, payload
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def mint_soul_bound_token(
         self,
@@ -512,16 +523,15 @@ class AptosTokenClient:
             transaction_arguments,
         )
 
-        signed_transaction = await self.client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
-    # :!:>transfer_token
     async def transfer_token(
         self, owner: Account, token: AccountAddress, to: AccountAddress
     ) -> str:
-        return await self.client.transfer_object(owner, token, to)  # <:!:transfer_token
+        return await self.client.transfer_object(owner, token, to)
 
     async def burn_token(self, creator: Account, token: AccountAddress) -> str:
         payload = EntryFunction.natural(
@@ -531,10 +541,10 @@ class AptosTokenClient:
             [TransactionArgument(token, Serializer.struct)],
         )
 
-        signed_transaction = await self.client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def freeze_token(self, creator: Account, token: AccountAddress) -> str:
         payload = EntryFunction.natural(
@@ -544,10 +554,10 @@ class AptosTokenClient:
             [TransactionArgument(token, Serializer.struct)],
         )
 
-        signed_transaction = await self.client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def unfreeze_token(self, creator: Account, token: AccountAddress) -> str:
         payload = EntryFunction.natural(
@@ -557,10 +567,10 @@ class AptosTokenClient:
             [TransactionArgument(token, Serializer.struct)],
         )
 
-        signed_transaction = await self.client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def add_token_property(
         self, creator: Account, token: AccountAddress, prop: Property
@@ -575,10 +585,10 @@ class AptosTokenClient:
             transaction_arguments,
         )
 
-        signed_transaction = await self.client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def remove_token_property(
         self, creator: Account, token: AccountAddress, name: str
@@ -595,10 +605,10 @@ class AptosTokenClient:
             transaction_arguments,
         )
 
-        signed_transaction = await self.client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def update_token_property(
         self, creator: Account, token: AccountAddress, prop: Property
@@ -613,17 +623,17 @@ class AptosTokenClient:
             transaction_arguments,
         )
 
-        signed_transaction = await self.client.create_bcs_signed_transaction(
+        signed_transaction = await self.client.create_signed_transaction(
             creator, TransactionPayload(payload)
         )
-        return await self.client.submit_bcs_transaction(signed_transaction)
+        return await self.client.submit_transaction(signed_transaction)
 
     async def tokens_minted_from_transaction(
         self, txn_hash: str
     ) -> List[AccountAddress]:
         output = await self.client.transaction_by_hash(txn_hash)
         mints = []
-        for event in output["events"]:
+        for event in output["output"]["Move"]["events"]:
             if event["type"] not in (
                 "0x4::collection::MintEvent",
                 "0x4::collection::Mint",
