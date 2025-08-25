@@ -2,7 +2,7 @@
 name = "supra-sdk"
 version = "0.1.0"
 description = "Supra SDK"
-authors = ["Supra Labs <opensource@supralabs.com>"]
+authors = ["Supra Labs"]
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/Entropy-Foundation/aptos-python-sdk/"
