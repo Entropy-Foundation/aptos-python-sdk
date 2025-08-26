@@ -65,7 +65,7 @@ class Signature(asymmetric_crypto.Signature):
         self.signature = signature
 
     def get_null_signature(self) -> Signature:
-        if self.variant:
+        if self.variant == Signature.ED25519:
             return Signature(ed25519.Signature.get_null_signature())
         else:
             raise NotImplementedError()
