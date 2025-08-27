@@ -1,4 +1,7 @@
+# Copyright © Supra
+# Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
+
 import asyncio
 
 from examples.common import FAUCET_URL, NODE_URL

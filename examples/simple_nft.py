@@ -1,4 +1,5 @@
-# Copyright © Supra Foundation
+# Copyright © Supra
+# Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
@@ -8,7 +9,7 @@ from supra_sdk.account import Account
 from supra_sdk.async_client import FaucetClient, RestClient
 from supra_sdk.supra_tokenv1_client import SupraTokenV1Client
 
-from .common import FAUCET_URL, NODE_URL
+from examples.common import FAUCET_URL, NODE_URL
 
 
 async def main():

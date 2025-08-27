@@ -1,5 +1,7 @@
-# Copyright © Supra Foundation
+# Copyright © Supra
+# Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
+
 import asyncio
 import copy
 import json
