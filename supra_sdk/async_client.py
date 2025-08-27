@@ -17,6 +17,32 @@ import httpx
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
 from supra_sdk.api_types import (
+    ACCOUNT_AUTOMATED_TRANSACTIONS_ENDPOINT,
+    ACCOUNT_COIN_TRANSACTIONS_ENDPOINT,
+    ACCOUNT_ENDPOINT,
+    ACCOUNT_MODULE_ENDPOINT,
+    ACCOUNT_MODULES_ENDPOINT,
+    ACCOUNT_RESOURCE_ENDPOINT,
+    ACCOUNT_RESOURCES_ENDPOINT,
+    ACCOUNT_TRANSACTIONS_ENDPOINT,
+    BLOCK_BY_HASH_ENDPOINT,
+    BLOCK_BY_HEIGHT_ENDPOINT,
+    BLOCK_TRANSACTIONS_ENDPOINT,
+    CHAIN_ID_ENDPOINT,
+    COMMITTEE_AUTHORIZATION_ENDPOINT,
+    CONSENSUS_BLOCK_BY_HEIGHT_ENDPOINT,
+    EVENTS_BY_TYPE_ENDPOINT,
+    FAUCET_ENDPOINT,
+    FAUCET_TRANSACTION_ENDPOINT,
+    LATEST_BLOCK_ENDPOINT,
+    LATEST_CONSENSUS_BLOCK_ENDPOINT,
+    TABLE_ITEMS_ENDPOINT,
+    TRANSACTION_BY_HASH_ENDPOINT,
+    TRANSACTION_ESTIMATE_GAS_PRICE_ENDPOINT,
+    TRANSACTION_PARAMETERS_ENDPOINT,
+    TRANSACTION_SIMULATE_TRANSACTION_ENDPOINT,
+    TRANSACTION_SUBMIT_TRANSACTION_ENDPOINT,
+    VIEW_FUNCTION_ENDPOINT,
     AutomatedTransactionsPagination,
     EventsPagination,
     Pagination,
@@ -44,41 +70,6 @@ from supra_sdk.transactions import (
 )
 from supra_sdk.type_tag import StructTag, TypeTag
 
-# API ENDPOINTS
-CHAIN_ID_ENDPOINT = "rpc/v3/transactions/chain_id"
-ACCOUNT_ENDPOINT = "rpc/v3/accounts/{account_address}"
-ACCOUNT_RESOURCE_ENDPOINT = (
-    "rpc/v3/accounts/{account_address}/resources/{resource_type}"
-)
-ACCOUNT_RESOURCES_ENDPOINT = "rpc/v3/accounts/{account_address}/resources"
-ACCOUNT_MODULE_ENDPOINT = "rpc/v3/accounts/{account_address}/modules/{module_name}"
-ACCOUNT_MODULES_ENDPOINT = "rpc/v3/accounts/{account_address}/modules"
-
-ACCOUNT_TRANSACTIONS_ENDPOINT = "rpc/v3/accounts/{account_address}/transactions"
-ACCOUNT_COIN_TRANSACTIONS_ENDPOINT = (
-    "rpc/v3/accounts/{account_address}/coin_transactions"
-)
-ACCOUNT_AUTOMATED_TRANSACTIONS_ENDPOINT = (
-    "rpc/v3/accounts/{account_address}/automated_transactions"
-)
-TRANSACTION_BY_HASH_ENDPOINT = "rpc/v3/transactions/{hash}"
-TRANSACTION_ESTIMATE_GAS_PRICE_ENDPOINT = "rpc/v2/transactions/estimate_gas_price"
-TRANSACTION_PARAMETERS_ENDPOINT = "rpc/v1/transactions/parameters"
-TRANSACTION_SUBMIT_TRANSACTION_ENDPOINT = "rpc/v3/transactions/submit"
-TRANSACTION_SIMULATE_TRANSACTION_ENDPOINT = "rpc/v3/transactions/simulate"
-VIEW_FUNCTION_ENDPOINT = "rpc/v3/view"
-TABLE_ITEMS_ENDPOINT = "rpc/v2/tables/{table_handle}/item"
-EVENTS_BY_TYPE_ENDPOINT = "rpc/v3/events/{event_type}"
-LATEST_BLOCK_ENDPOINT = "rpc/v3/block"
-BLOCK_BY_HASH_ENDPOINT = "rpc/v3/block/{block_hash}"
-BLOCK_BY_HEIGHT_ENDPOINT = "rpc/v3/block/height/{height}"
-BLOCK_TRANSACTIONS_ENDPOINT = "rpc/v3/block/{block_hash}/transactions"
-LATEST_CONSENSUS_BLOCK_ENDPOINT = "rpc/v2/consensus/block"
-CONSENSUS_BLOCK_BY_HEIGHT_ENDPOINT = "rpc/v2/consensus/height/{height}"
-COMMITTEE_AUTHORIZATION_ENDPOINT = "rpc/v1/consensus/committee_authorization/{epoch}"
-FAUCET_ENDPOINT = "rpc/v1/wallet/faucet/{address}"
-FAUCET_TRANSACTION_ENDPOINT = "rpc/v2/wallet/faucet/transactions/{hash}"
-
 
 @dataclass
 class ClientConfig:
@@ -93,7 +84,7 @@ class ClientConfig:
         polling_wait_time_in_seconds (int): Time to wait in polling before next request.
         wait_for_transaction (bool): Flag indicating whether there should be a wait for sent transaction or not.
         http2 (bool): Whether to use HTTP/2 for requests.
-        authorization_key (Optional[str]): Optional authorization key for authentication.
+        access_token (Optional[str]): Optional access token (JWT) for authentication.
     """
 
     expiration_ttl: int = 600
@@ -103,10 +94,10 @@ class ClientConfig:
     polling_wait_time_in_seconds: int = 1
     wait_for_transaction: bool = True
     http2: bool = False
-    authorization_key: Optional[str] = None
+    access_token: Optional[str] = None
 
-    def raise_if_authorization_key_not_exists(self):
-        if not self.authorization_key:
+    def raise_if_access_token_not_exists(self):
+        if not self.access_token:
             raise AuthorizationKeyNotSpecified
 
 
@@ -440,7 +431,7 @@ class RestClient:
         Submits a given signed transaction to the Supra network.
 
         This method wraps the given `signed_transaction` under `SupraTransaction`, serializes wrapped object using
-        BCS serialisation, submits serialized payload on the rpc node endpoint, and returns the transaction hash.
+        BCS serialization, submits serialized payload on the rpc node endpoint, and returns the transaction hash.
 
         Args:
             signed_transaction (SignedTransaction): Signed transaction object to submit transaction.
@@ -844,7 +835,7 @@ class RestClient:
         return await self.submit_transaction(signed_transaction)
 
     async def transfer_object(
-        self, owner: Account, object: AccountAddress, to: AccountAddress
+        self, owner: Account, object_address: AccountAddress, to: AccountAddress
     ) -> str:
         """
         Transfer an object to another account.
@@ -853,7 +844,7 @@ class RestClient:
 
         Args:
             owner (Account): The owner account sending the object.
-            object (AccountAddress): The address of the object to transfer.
+            object_address (AccountAddress): The address of the object to transfer.
             to (AccountAddress): The recipient's account address.
 
         Returns:
@@ -861,7 +852,7 @@ class RestClient:
         """
 
         transaction_arguments = [
-            TransactionArgument(object, Serializer.struct),
+            TransactionArgument(object_address, Serializer.struct),
             TransactionArgument(to, Serializer.struct),
         ]
         payload = EntryFunction.natural(
@@ -1064,7 +1055,7 @@ class RestClient:
              bytes: BCS bytes of the latest consensus block.
         """
 
-        self.client_config.raise_if_authorization_key_not_exists()
+        self.client_config.raise_if_access_token_not_exists()
         return (await self._get(endpoint=LATEST_CONSENSUS_BLOCK_ENDPOINT)).read()
 
     async def consensus_block_by_height(
@@ -1126,8 +1117,8 @@ class RestClient:
         params = {key: val for key, val in params.items() if val is not None}
         headers = headers or {}
 
-        if self.client_config.authorization_key:
-            headers["Authorization"] = f"Bearer {self.client_config.authorization_key}"
+        if self.client_config.access_token:
+            headers["Authorization"] = f"Bearer {self.client_config.access_token}"
 
         response = await self.client.get(
             url=urljoin(self.base_url, endpoint), params=params, headers=headers
@@ -1229,7 +1220,7 @@ class FaucetClient:
 
         Note: This method is similar to the `RestClient.wait_for_transaction`, this method uses
         `FaucetClient.faucet_transaction_by_hash` method to get transaction data of the faucet transaction, it uses that
-         method because, there is different endpoint ment in rpc node to get the transaction details of the pending
+         method because, there is different endpoint meant in rpc node to get the transaction details of the pending
          faucet transactions.
 
         Args:
@@ -1255,18 +1246,18 @@ class FaucetClient:
             self.rest_client.client_config.transaction_wait_time_in_seconds,
         )
 
-    async def faucet_transaction_by_hash(self, hash: str) -> Dict[str, Any]:
+    async def faucet_transaction_by_hash(self, tx_hash: str) -> Dict[str, Any]:
         """
         Retrieves details of a faucet transaction by its hash.
 
         Args:
-            hash (str): The hash of the faucet transaction.
+            tx_hash (str): The hash of the faucet transaction.
 
         Returns:
             Dict[str, Any]: Faucet transaction details.
         """
 
-        endpoint = FAUCET_TRANSACTION_ENDPOINT.format(hash=hash)
+        endpoint = FAUCET_TRANSACTION_ENDPOINT.format(hash=tx_hash)
         return (await self._get(endpoint=endpoint)).json()
 
     async def _get(
@@ -1324,7 +1315,7 @@ class TransactionWaitTimeoutReached(Exception):
 
 class AuthorizationKeyNotSpecified(Exception):
     """
-    Exception raised when consensus api endpoints are accessed without defining `authorization_key` in `ClientConfig`.
+    Exception raised when consensus api endpoints are accessed without defining `access_token` in `ClientConfig`.
     """
 
     def __init__(self):

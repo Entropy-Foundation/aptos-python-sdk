@@ -5,11 +5,10 @@
 import asyncio
 import json
 
+from examples.common import FAUCET_URL, NODE_URL
 from supra_sdk.account import Account
 from supra_sdk.async_client import FaucetClient, RestClient
 from supra_sdk.supra_tokenv1_client import SupraTokenV1Client
-
-from examples.common import FAUCET_URL, NODE_URL
 
 
 async def main():
