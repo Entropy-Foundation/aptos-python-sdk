@@ -1,60 +1,65 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra
+# Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import json
 
-from aptos_sdk.account import Account
-from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.transactions import (
+from examples.common import FAUCET_URL, NODE_URL
+from supra_sdk.account import Account
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.bcs import Serializer
+from supra_sdk.transactions import (
     EntryFunction,
     TransactionArgument,
     TransactionPayload,
 )
-from aptos_sdk.type_tag import StructTag, TypeTag
-
-from .common import FAUCET_URL, NODE_URL
+from supra_sdk.type_tag import StructTag, TypeTag
 
 
 async def main():
     rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)  # <:!:section_1
+    faucet_client = FaucetClient(FAUCET_URL, rest_client)
 
     alice = Account.generate()
     bob = Account.generate()
 
-    print("\n=== Addresses ===")
-    print(f"Alice: {alice.address()}")
-    print(f"Bob: {bob.address()}")
+    print(f"Alice account address: {alice.address()}")
+    print(f"Bob account address: {bob.address()}")
 
-    await faucet_client.fund_account(alice.address(), 100_000_000)
+    await faucet_client.faucet(alice.address())
 
     payload = EntryFunction.natural(
         "0x1::coin",
         "transfer",
-        [TypeTag(StructTag.from_str("0x1::aptos_coin::AptosCoin"))],
+        [TypeTag(StructTag.from_str("0x1::supra_coin::SupraCoin"))],
         [
             TransactionArgument(bob.address(), Serializer.struct),
             TransactionArgument(100_000, Serializer.u64),
         ],
     )
-    transaction = await rest_client.create_bcs_transaction(
+    signed_transaction = await rest_client.create_signed_transaction(
         alice, TransactionPayload(payload)
     )
 
     print("\n=== Simulate before creating Bob's Account ===")
-    output = await rest_client.simulate_transaction(transaction, alice)
-    assert output[0]["vm_status"] != "Executed successfully", "This shouldn't succeed"
-    print(json.dumps(output, indent=4, sort_keys=True))
+    simulation_result = await rest_client.simulate_transaction(signed_transaction)
+    vm_status = simulation_result["output"]["Move"]["vm_status"]
+
+    assert "Move abort" in vm_status, f"Expected CoinStore error, got: {vm_status}"
+    print(json.dumps(simulation_result, indent=4, sort_keys=True))
 
     print("\n=== Simulate after creating Bob's Account ===")
-    await faucet_client.fund_account(bob.address(), 0)
-    output = await rest_client.simulate_transaction(transaction, alice)
-    assert output[0]["vm_status"] == "Executed successfully", "This should succeed"
-    print(json.dumps(output, indent=4, sort_keys=True))
+    await faucet_client.faucet(bob.address())
+
+    # Create another transaction with broken signature for second simulation
+    simulation_result = await rest_client.simulate_transaction(signed_transaction)
+    vm_status = simulation_result["output"]["Move"]["vm_status"]
+    assert vm_status == "Executed successfully", f"Expected success, got: {vm_status}"
+    print(json.dumps(simulation_result, indent=4, sort_keys=True))
 
     await rest_client.close()
+    await faucet_client.close()
 
 
 if __name__ == "__main__":

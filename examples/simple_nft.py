@@ -1,88 +1,66 @@
-# Copyright © Aptos Foundation
+# Copyright © Supra
+# Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
 import json
 
-from aptos_sdk.account import Account
-from aptos_sdk.aptos_tokenv1_client import AptosTokenV1Client
-from aptos_sdk.async_client import FaucetClient, RestClient
-
-from .common import FAUCET_URL, NODE_URL
+from examples.common import FAUCET_URL, NODE_URL
+from supra_sdk.account import Account
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.supra_tokenv1_client import SupraTokenV1Client
 
 
 async def main():
     rest_client = RestClient(NODE_URL)
     faucet_client = FaucetClient(FAUCET_URL, rest_client)
-    token_client = AptosTokenV1Client(rest_client)
+    token_client = SupraTokenV1Client(rest_client)
 
-    # :!:>section_2
     alice = Account.generate()
-    bob = Account.generate()  # <:!:section_2
+    bob = Account.generate()
 
     collection_name = "Alice's"
     token_name = "Alice's first token"
     property_version = 0
 
-    print("\n=== Addresses ===")
-    print(f"Alice: {alice.address()}")
-    print(f"Bob: {bob.address()}")
+    print(f"Alice account address: {alice.address()}")
+    print(f"Bob account address: {bob.address()}")
 
-    # :!:>section_3
-    bob_fund = faucet_client.fund_account(alice.address(), 100_000_000)
-    alice_fund = faucet_client.fund_account(bob.address(), 100_000_000)  # <:!:section_3
-    await asyncio.gather(*[bob_fund, alice_fund])
-
-    print("\n=== Initial Coin Balances ===")
-    alice_balance = rest_client.account_balance(alice.address())
-    bob_balance = rest_client.account_balance(bob.address())
-    [alice_balance, bob_balance] = await asyncio.gather(*[alice_balance, bob_balance])
-    print(f"Alice: {alice_balance}")
-    print(f"Bob: {bob_balance}")
+    await faucet_client.faucet(alice.address())
+    await faucet_client.faucet(bob.address())
 
     print("\n=== Creating Collection and Token ===")
+    await token_client.create_collection(
+        alice, collection_name, "Alice's simple collection", "https://supra.com"
+    )
 
-    # :!:>section_4
-    txn_hash = await token_client.create_collection(
-        alice, collection_name, "Alice's simple collection", "https://aptos.dev"
-    )  # <:!:section_4
-    await rest_client.wait_for_transaction(txn_hash)
-
-    # :!:>section_5
-    txn_hash = await token_client.create_token(
+    await token_client.create_token(
         alice,
         collection_name,
         token_name,
         "Alice's simple token",
         1,
-        "https://aptos.dev/img/nyan.jpeg",
+        "https://supra.dev/img/temp.jpeg",
         0,
-    )  # <:!:section_5
-    await rest_client.wait_for_transaction(txn_hash)
+    )
 
-    # :!:>section_6
     collection_data = await token_client.get_collection(
         alice.address(), collection_name
     )
     print(
         f"Alice's collection: {json.dumps(collection_data, indent=4, sort_keys=True)}"
-    )  # <:!:section_6
-    # :!:>section_7
+    )
     balance = await token_client.get_token_balance(
         alice.address(), alice.address(), collection_name, token_name, property_version
     )
-    print(f"Alice's token balance: {balance}")  # <:!:section_7
-    # :!:>section_8
+    print(f"Alice's token balance: {balance}")
     token_data = await token_client.get_token_data(
         alice.address(), collection_name, token_name, property_version
     )
-    print(
-        f"Alice's token data: {json.dumps(token_data, indent=4, sort_keys=True)}"
-    )  # <:!:section_8
+    print(f"Alice's token data: {json.dumps(token_data, indent=4, sort_keys=True)}")
 
     print("\n=== Transferring the token to Bob ===")
-    # :!:>section_9
-    txn_hash = await token_client.offer_token(
+    await token_client.offer_token(
         alice,
         bob.address(),
         alice.address(),
@@ -90,19 +68,15 @@ async def main():
         token_name,
         property_version,
         1,
-    )  # <:!:section_9
-    await rest_client.wait_for_transaction(txn_hash)
-
-    # :!:>section_10
-    txn_hash = await token_client.claim_token(
+    )
+    await token_client.claim_token(
         bob,
         alice.address(),
         alice.address(),
         collection_name,
         token_name,
         property_version,
-    )  # <:!:section_10
-    await rest_client.wait_for_transaction(txn_hash)
+    )
 
     alice_balance = token_client.get_token_balance(
         alice.address(), alice.address(), collection_name, token_name, property_version
@@ -115,11 +89,9 @@ async def main():
     print(f"Bob's token balance: {bob_balance}")
 
     print("\n=== Transferring the token back to Alice using MultiAgent ===")
-    txn_hash = await token_client.direct_transfer_token(
+    await token_client.direct_transfer_token(
         bob, alice, alice.address(), collection_name, token_name, 0, 1
     )
-    await rest_client.wait_for_transaction(txn_hash)
-
     alice_balance = token_client.get_token_balance(
         alice.address(), alice.address(), collection_name, token_name, property_version
     )
@@ -131,6 +103,7 @@ async def main():
     print(f"Bob's token balance: {bob_balance}")
 
     await rest_client.close()
+    await faucet_client.close()
 
 
 if __name__ == "__main__":

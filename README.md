@@ -1,89 +1,67 @@
-# Aptos Python SDK
-[![Discord][discord-image]][discord-url]
-[![PyPI Package Version][pypi-image-version]][pypi-url]
-[![PyPI Package Downloads][pypi-image-downloads]][pypi-url]
+# Supra Python SDK
 
-This provides basic functionalities to interact with [Aptos](https:/github.com/aptos-labs/aptos-core/). Get started [here](https://aptos.dev/guides/system-integrators-guide/#getting-started).
+[![Discord chat](https://img.shields.io/discord/850682587273625661?style=flat-square)](https://discord.gg/supralabs)
 
-Currently, this is still in development and may not be suitable for production purposes.
-
-Note: The sync client is deprecated, please only start new projects using the async client. Feature contributions to the sync client will be rejected.
+The `supra-python-sdk` provides a seamless interface for interacting with the Supra-L1 network. It offers comprehensive support for `move-vm` operations and transactions, enabling developers to both query on-chain data and submit `move-vm` based transactions with ease.
 
 ## Requirements
-This SDK uses [Poetry](https://python-poetry.org/docs/#installation) for packaging and dependency management:
 
-```
-curl -sSL https://install.python-poetry.org | python3 -
-poetry install
+This SDK uses [uv](https://docs.astral.sh/uv/) for packaging and dependency management.  
+
+### Step 1: Install `uv`
+
+Follow the official [installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+
+### Step 2: Set up the environment
+
+Once `uv` is installed, run the following command to create a virtual environment and install all dependencies:
+
+```bash
+uv sync
 ```
 
-## Unit testing
+## Run and Test SDK
+
+> Since the Supra-L1 network codebase is not publicly available, the test cases in `async_client.py` uses testnet rpc-url by default. However, if you are an internal contributor with access to the codebase, you can replace the testnet rpc-url with a localnet rpc-url to run the tests with a local network.
+
+Follow to run the local network using `smr-moonshot`:
+
+```bash
+cd remote_env/
+make killall
+./local_test.sh -t daemon -n
+```
+
+> Unit tests
+
 ```bash
 make test
 ```
 
-## E2E testing and Using the Aptos CLI
-
-* Download and install the [Aptos CLI](https://aptos.dev/tools/aptos-cli/use-cli/running-a-local-network).
-* Set the environment variable `APTOS_CLI_PATH` to the full path of the CLI.
-* Retrieve the [Aptos Core Github Repo](https://github.com/aptos-labs/aptos-core) (git clone https://github.com/aptos-labs/aptos-core)
-* Set the environment variable `APTOS_CORE_REPO` to the full path of the Repository.
-* `make integration_test`
-
-You can do this a bit more manually by:
-
-First, run a local testnet (run this from the root of aptos-core):
+> Test coverage
 
 ```bash
-aptos node run-local-testnet --force-restart --assume-yes --with-indexer-api
+make test-coverage
 ```
 
-Next, tell the end-to-end tests to talk to this locally running testnet:
-
-```bash
-export APTOS_CORE_REPO="/path/to/repo"
-export APTOS_FAUCET_URL="http://127.0.0.1:8081"
-export APTOS_INDEXER_URL="http://127.0.0.1:8090/v1/graphql"
-export APTOS_NODE_URL="http://127.0.0.1:8080/v1"
-```
-
-Finally run the tests:
+> Run examples
 
 ```bash
 make examples
 ```
 
-Integration Testing Using the Aptos CLI:
-
-```bash
-make integration_test
-```
-
-> [!NOTE]
-> The Python SDK does not require the Indexer, if you would prefer to test without it, unset or do not set the environmental variable `APTOS_INDEXER_URL` and exclude `--with-indexer-api` from running the aptos node software.
-
 ## Autoformatting
+
 ```bash
 make fmt
 ```
 
 ## Autolinting
+
 ```bash
 make lint
 ```
 
-## Package Publishing
-
-* Download the [Aptos CLI](https://aptos.dev/tools/aptos-cli/install-cli/).
-* Set the environment variable `APTOS_CLI_PATH` to the full path of the CLI.
-* `poetry run python -m aptos_sdk.cli` and set the appropriate command-line parameters
-
 ## Semantic versioning
-This project follows [semver](https://semver.org/) as closely as possible
 
-[repo]: https://github.com/aptos-labs/aptos-core
-[pypi-image-version]: https://img.shields.io/pypi/v/aptos-sdk.svg
-[pypi-image-downloads]: https://img.shields.io/pypi/dm/aptos-sdk.svg
-[pypi-url]: https://pypi.org/project/aptos-sdk
-[discord-image]: https://img.shields.io/discord/945856774056083548?label=Discord&logo=discord&style=flat~~~~
-[discord-url]: https://discord.gg/aptosnetwork
+This project follows [semver](https://semver.org/) as closely as possible

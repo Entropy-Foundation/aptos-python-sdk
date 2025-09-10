@@ -2,8 +2,8 @@ import typing
 
 from behave import then, use_step_matcher, when
 
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.bcs import Deserializer, Serializer
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.bcs import Deserializer, Serializer
 
 # Use regular expressions
 use_step_matcher("re")

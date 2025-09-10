@@ -1,20 +1,23 @@
+# Copyright © Supra
+# Parts of the project are originally copyright © Aptos Foundation
+# SPDX-License-Identifier: Apache-2.0
+
 import asyncio
 from typing import List, cast
 
-import aptos_sdk.asymmetric_crypto as asymmetric_crypto
-import aptos_sdk.ed25519 as ed25519
-from aptos_sdk.account import Account, RotationProofChallenge
-from aptos_sdk.account_address import AccountAddress
-from aptos_sdk.async_client import FaucetClient, RestClient
-from aptos_sdk.authenticator import Authenticator
-from aptos_sdk.bcs import Serializer
-from aptos_sdk.transactions import (
+import supra_sdk.asymmetric_crypto as asymmetric_crypto
+import supra_sdk.ed25519 as ed25519
+from examples.common import FAUCET_URL, NODE_URL
+from supra_sdk.account import Account, RotationProofChallenge
+from supra_sdk.account_address import AccountAddress
+from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.authenticator import Authenticator
+from supra_sdk.bcs import Serializer
+from supra_sdk.transactions import (
     EntryFunction,
     TransactionArgument,
     TransactionPayload,
 )
-
-from .common import FAUCET_URL, NODE_URL
 
 WIDTH = 19
 
@@ -33,10 +36,10 @@ def format_account_info(account: Account) -> str:
     return "".join([truncate(v).ljust(WIDTH, " ") for v in vals])
 
 
-async def rotate_auth_key_ed_25519_payload(
-    rest_client: RestClient, from_account: Account, private_key: ed25519.PrivateKey
+async def rotate_auth_key_ed25519_payload(
+    rest_client: RestClient, from_account: Account, to_private_key: ed25519.PrivateKey
 ) -> TransactionPayload:
-    to_account = Account.load_key(private_key.hex())
+    to_account = Account.load_key(to_private_key.hex())
     rotation_proof_challenge = RotationProofChallenge(
         sequence_number=await rest_client.account_sequence_number(
             from_account.address()
@@ -58,7 +61,7 @@ async def rotate_auth_key_ed_25519_payload(
     )
 
 
-async def rotate_auth_key_multi_ed_25519_payload(
+async def rotate_auth_key_multi_ed25519_payload(
     rest_client: RestClient,
     from_account: Account,
     private_keys: List[ed25519.PrivateKey],
@@ -132,7 +135,7 @@ async def main():
     bob = Account.generate()
 
     # Fund Alice's account, since we don't use Bob's
-    await faucet_client.fund_account(alice.address(), 100_000_000)
+    await faucet_client.faucet(alice.address())
 
     # Display formatted account info
     print(
@@ -151,23 +154,23 @@ async def main():
 
     print("\n...rotating...\n")
 
-    # :!:>rotate_key
     # Create the payload for rotating Alice's private key to Bob's private key
-    payload = await rotate_auth_key_ed_25519_payload(
+    transaction_payload = await rotate_auth_key_ed25519_payload(
         rest_client, alice, bob.private_key
     )
     # Have Alice sign the transaction with the payload
-    signed_transaction = await rest_client.create_bcs_signed_transaction(alice, payload)
-    # Submit the transaction and wait for confirmation
-    tx_hash = await rest_client.submit_bcs_transaction(signed_transaction)
-    await rest_client.wait_for_transaction(tx_hash)  # <:!:rotate_key
+    signed_transaction = await rest_client.create_signed_transaction(
+        alice, transaction_payload
+    )
+    tx_hash = await rest_client.submit_transaction(signed_transaction)
+    print(f"Rotated auth key, tx_hash: {tx_hash}")
 
     # Check the authentication key for Alice's address on-chain
     alice_new_account_info = await rest_client.account(alice.address())
     # Ensure that Alice's authentication key matches bob's
-    assert (
-        alice_new_account_info["authentication_key"] == bob.auth_key()
-    ), "Authentication key doesn't match Bob's"
+    assert alice_new_account_info["authentication_key"] == bob.auth_key(), (
+        "Authentication key doesn't match Bob's"
+    )
 
     # Construct a new Account object that reflects alice's original address with the new private key
     original_alice_key = alice.private_key
@@ -176,21 +179,21 @@ async def main():
     # Display formatted account info
     print("Alice".ljust(WIDTH, " ") + format_account_info(alice))
     print("Bob".ljust(WIDTH, " ") + format_account_info(bob))
-    print()
 
     print("\n...rotating...\n")
-    payload = await rotate_auth_key_multi_ed_25519_payload(
+    payload = await rotate_auth_key_multi_ed25519_payload(
         rest_client, alice, [bob.private_key, original_alice_key]
     )
-    signed_transaction = await rest_client.create_bcs_signed_transaction(alice, payload)
-    tx_hash = await rest_client.submit_bcs_transaction(signed_transaction)
-    await rest_client.wait_for_transaction(tx_hash)
+    signed_transaction = await rest_client.create_signed_transaction(alice, payload)
+    tx_hash = await rest_client.submit_transaction(signed_transaction)
+    print(f"Rotated to multi-ed25519 auth key, tx_hash: {tx_hash}")
 
     alice_new_account_info = await rest_client.account(alice.address())
     auth_key = alice_new_account_info["authentication_key"]
     print(f"Rotation to MultiPublicKey complete, new authkey: {auth_key}")
 
     await rest_client.close()
+    await faucet_client.close()
 
 
 if __name__ == "__main__":
