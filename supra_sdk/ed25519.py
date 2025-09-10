@@ -108,12 +108,12 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
     MIN_THRESHOLD = 1
 
     def __init__(self, keys: List[PublicKey], threshold: int):
-        assert (
-            self.MIN_KEYS <= len(keys) <= self.MAX_KEYS
-        ), f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys."
-        assert (
-            self.MIN_THRESHOLD <= threshold <= len(keys)
-        ), f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}."
+        assert self.MIN_KEYS <= len(keys) <= self.MAX_KEYS, (
+            f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys."
+        )
+        assert self.MIN_THRESHOLD <= threshold <= len(keys), (
+            f"Threshold must be between {self.MIN_THRESHOLD} and {len(keys)}."
+        )
 
         self.keys = keys
         self.threshold = threshold
@@ -124,17 +124,17 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
     def verify(self, data: bytes, signature: asymmetric_crypto.Signature) -> bool:
         try:
             signatures = cast(MultiSignature, signature)
-            assert self.threshold <= len(
-                signatures.signatures
-            ), f"Insufficient signatures, {self.threshold} > {len(signatures.signatures)}"
+            assert self.threshold <= len(signatures.signatures), (
+                f"Insufficient signatures, {self.threshold} > {len(signatures.signatures)}"
+            )
 
             for idx, signature in signatures.signatures:
-                assert (
-                    len(self.keys) > idx
-                ), f"Signature index exceeds available keys {len(self.keys)} < {idx}"
-                assert self.keys[idx].verify(
-                    data, signature
-                ), "Unable to verify signature"
+                assert len(self.keys) > idx, (
+                    f"Signature index exceeds available keys {len(self.keys)} < {idx}"
+                )
+                assert self.keys[idx].verify(data, signature), (
+                    "Unable to verify signature"
+                )
         except Exception:
             return False
         return True
@@ -207,9 +207,9 @@ class MultiSignature(asymmetric_crypto.Signature):
 
     def __init__(self, signatures: List[Tuple[int, Signature]]):
         for signature in signatures:
-            assert (
-                signature[0] < self.BITMAP_NUM_OF_BYTES * 8
-            ), "bitmap value exceeds maximum value"
+            assert signature[0] < self.BITMAP_NUM_OF_BYTES * 8, (
+                "bitmap value exceeds maximum value"
+            )
         self.signatures = signatures
 
     def __eq__(self, other: object):

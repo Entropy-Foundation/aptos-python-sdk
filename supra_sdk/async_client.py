@@ -1765,7 +1765,6 @@ class TestSupraAutomationTransactions(unittest.IsolatedAsyncioTestCase):
 
 
 class TestFaucetClient(unittest.IsolatedAsyncioTestCase):
-
     async def test_faucet(self):
         base_url = "https://rpc-testnet.supra.com"
         faucet_receiver_1 = Account.generate().address()

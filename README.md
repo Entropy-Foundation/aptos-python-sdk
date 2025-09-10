@@ -6,11 +6,18 @@ The `supra-python-sdk` provides a seamless interface for interacting with the Su
 
 ## Requirements
 
-This SDK uses [Poetry](https://python-poetry.org/docs/#installation) for packaging and dependency management:
+This SDK uses [uv](https://docs.astral.sh/uv/) for packaging and dependency management.  
+
+### Step 1: Install `uv`
+
+Follow the official [installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+
+### Step 2: Set up the environment
+
+Once `uv` is installed, run the following command to create a virtual environment and install all dependencies:
 
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
-poetry install
+uv sync
 ```
 
 ## Run and Test SDK
