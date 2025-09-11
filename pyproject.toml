@@ -74,6 +74,8 @@ module-root = ""
 [dependency-groups]
 dev = [
     "aiofiles>=24.1.0",
+    "black>=25.1.0",
     "coverage>=7.10.6",
+    "pip>=25.2",
     "ruff>=0.13.0",
 ]
