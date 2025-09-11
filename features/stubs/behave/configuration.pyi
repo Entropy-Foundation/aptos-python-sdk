@@ -8,10 +8,11 @@ from behave.model_core import FileLocation as FileLocation
 from behave.reporter.junit import JUnitReporter as JUnitReporter
 from behave.reporter.summary import SummaryReporter as SummaryReporter
 from behave.tag_expression import TagExpression as TagExpression
-from behave.textutil import select_best_encoding as select_best_encoding
-from behave.textutil import to_texts as to_texts
-from behave.userdata import UserData as UserData
-from behave.userdata import parse_user_define as parse_user_define
+from behave.textutil import (
+    select_best_encoding as select_best_encoding,
+    to_texts as to_texts,
+)
+from behave.userdata import UserData as UserData, parse_user_define as parse_user_define
 
 ConfigParser: Incomplete
 

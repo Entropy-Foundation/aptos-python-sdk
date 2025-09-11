@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List, Tuple
+from typing import Any
 
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
@@ -128,7 +128,7 @@ class Token:
         )
 
 
-class InvalidPropertyType(Exception):
+class InvalidPropertyTypeError(Exception):
     """Invalid property type"""
 
     property_type: Any
@@ -186,10 +186,10 @@ class Property:
         elif self.property_type == "vector<u8>":
             Serializer.to_bytes(ser, self.value)
         else:
-            raise InvalidPropertyType(self.property_type)
+            raise InvalidPropertyTypeError(self.property_type)
         return ser.output()
 
-    def to_transaction_arguments(self) -> List[TransactionArgument]:
+    def to_transaction_arguments(self) -> list[TransactionArgument]:
         return [
             TransactionArgument(self.name, Serializer.str),
             TransactionArgument(self.property_type, Serializer.str),
@@ -220,7 +220,7 @@ class Property:
             return Property(name, "0x1::string::String", deserializer.str())
         elif property_type == Property.BYTE_VECTOR:
             return Property(name, "vector<u8>", deserializer.to_bytes())
-        raise InvalidPropertyType(property_type)
+        raise InvalidPropertyTypeError(property_type)
 
     @staticmethod
     def bool(name: str, value: bool) -> Property:
@@ -260,11 +260,11 @@ class Property:
 
 
 class PropertyMap:
-    properties: List[Property]
+    properties: list[Property]
 
     struct_tag: str = "0x4::property_map::PropertyMap"
 
-    def __init__(self, properties: List[Property]):
+    def __init__(self, properties: list[Property]):
         self.properties = properties
 
     def __str__(self) -> str:
@@ -276,7 +276,7 @@ class PropertyMap:
         response += "]"
         return response
 
-    def to_tuple(self) -> Tuple[List[str], List[str], List[bytes]]:
+    def to_tuple(self) -> tuple[list[str], list[str], list[bytes]]:
         names = []
         types = []
         values = []
@@ -631,7 +631,7 @@ class SupraTokenClient:
 
     async def tokens_minted_from_transaction(
         self, txn_hash: str
-    ) -> List[AccountAddress]:
+    ) -> list[AccountAddress]:
         output = await self.client.transaction_by_hash(txn_hash)
         mints = []
         for event in output["output"]["Move"]["events"]:

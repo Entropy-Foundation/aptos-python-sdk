@@ -9,7 +9,7 @@ import time
 import unittest
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, cast
 from urllib.parse import urljoin
 
 import httpx
@@ -73,8 +73,7 @@ from supra_sdk.type_tag import StructTag, TypeTag
 
 @dataclass
 class ClientConfig:
-    """
-    Holds configuration options for REST API clients.
+    """Holds configuration options for REST API clients.
 
     Attributes:
         expiration_ttl (int): Time-to-live in seconds before a transaction expires.
@@ -85,6 +84,7 @@ class ClientConfig:
         wait_for_transaction (bool): Flag indicating whether there should be a wait for sent transaction or not.
         http2 (bool): Whether to use HTTP/2 for requests.
         access_token (Optional[str]): Optional access token (JWT) for authentication.
+
     """
 
     expiration_ttl: int = 600
@@ -94,30 +94,30 @@ class ClientConfig:
     polling_wait_time_in_seconds: int = 1
     wait_for_transaction: bool = True
     http2: bool = False
-    access_token: Optional[str] = None
+    access_token: str | None = None
 
     def raise_if_access_token_not_exists(self):
         if not self.access_token:
-            raise AuthorizationKeyNotSpecified
+            raise AuthorizationKeyNotSpecifiedError
 
 
 class RestClient:
     """Allows to interact with the Supra-L1 Rest API in seamless manner"""
 
-    _chain_id: Optional[int]
+    _chain_id: int | None
     client: httpx.AsyncClient
     client_config: ClientConfig
     base_url: str
 
-    def __init__(self, base_url: str, client_config: ClientConfig = ClientConfig()):
-        """
-        Initializes the REST client.
+    def __init__(self, base_url: str, client_config: ClientConfig | None = None):
+        """Initializes the REST client.
 
         Args:
             base_url (str): The base URL of the API.
             client_config (ClientConfig): Configuration options for requests.
-        """
 
+        """
+        client_config = client_config or ClientConfig()
         self.base_url = base_url
         # Default limits
         limits = httpx.Limits()
@@ -136,20 +136,16 @@ class RestClient:
         self._chain_id = None
 
     async def close(self):
-        """
-        Closes the HTTP client session.
-        """
-
+        """Closes the HTTP client session."""
         await self.client.aclose()
 
     async def chain_id(self):
-        """
-        Provides the network Chain-ID.
+        """Provides the network Chain-ID.
 
         Returns:
             int: Network Chain-ID.
-        """
 
+        """
         if not self._chain_id:
             response = await self._get(endpoint=CHAIN_ID_ENDPOINT)
             self._chain_id = int(response.text)
@@ -158,31 +154,29 @@ class RestClient:
     async def account(
         self,
         account_address: AccountAddress,
-    ) -> Dict[str, str]:
-        """
-        Provides the authentication key and the sequence number of the given account.
+    ) -> dict[str, str]:
+        """Provides the authentication key and the sequence number of the given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
 
         Returns:
             Dict[str, str]: The authentication key and sequence number of the given account.
-        """
 
+        """
         endpoint = ACCOUNT_ENDPOINT.format(account_address=account_address)
         return (await self._get(endpoint=endpoint)).json()
 
     async def account_supra_balance(self, account_address: AccountAddress) -> int:
-        """
-        Provides the Supra coin balance associated with the given account.
+        """Provides the Supra coin balance associated with the given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
 
         Returns:
             int: The Supra coin balance associated with the given account.
-        """
 
+        """
         return await self.account_coin_balance(
             account_address, "0x1::supra_coin::SupraCoin"
         )
@@ -192,8 +186,7 @@ class RestClient:
         account_address: AccountAddress,
         coin_type: str,
     ) -> int:
-        """
-        Provides the given `coin_type` coin balance associated with the given account.
+        """Provides the given `coin_type` coin balance associated with the given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
@@ -201,8 +194,8 @@ class RestClient:
 
         Returns:
             int: The given `coin_type` coin balance associated with the given account.
-        """
 
+        """
         response = await self.view(
             "0x1::coin::balance", [coin_type], [str(account_address)]
         )
@@ -212,16 +205,15 @@ class RestClient:
         self,
         account_address: AccountAddress,
     ) -> int:
-        """
-        Provides the current sequence number of the given account.
+        """Provides the current sequence number of the given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
 
         Returns:
             int: The current sequence number for the given account.
-        """
 
+        """
         response = await self.account(account_address)
         return int(response["sequence_number"])
 
@@ -229,9 +221,8 @@ class RestClient:
         self,
         account_address: AccountAddress,
         resource_type: str,
-    ) -> Dict[str, Any]:
-        """
-        Retrieves an individual resource from a given account.
+    ) -> dict[str, Any]:
+        """Retrieves an individual resource from a given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
@@ -239,8 +230,8 @@ class RestClient:
 
         Returns:
             Dict[str, Any]: An individual resource from a given account.
-        """
 
+        """
         endpoint = ACCOUNT_RESOURCE_ENDPOINT.format(
             account_address=account_address, resource_type=resource_type
         )
@@ -249,10 +240,9 @@ class RestClient:
     async def account_resources(
         self,
         account_address: AccountAddress,
-        pagination: Optional[Pagination] = None,
-    ) -> Tuple[List[Dict[str, Any]], str]:
-        """
-        Retrieves all account resources for a given account.
+        pagination: Pagination | None = None,
+    ) -> tuple[list[dict[str, Any]], str]:
+        """Retrieves all account resources for a given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
@@ -262,8 +252,8 @@ class RestClient:
             Tuple[List[Dict[str, Any]], str]: A tuple containing,
                 - List[Dict[str, Any]]: All account resources for a given account.
                 - str: Cursor to retrieve the next page.
-        """
 
+        """
         endpoint = ACCOUNT_RESOURCES_ENDPOINT.format(account_address=account_address)
         params = pagination.to_params() if pagination else {}
         response = await self._get(endpoint=endpoint, params=params)
@@ -273,9 +263,8 @@ class RestClient:
         self,
         account_address: AccountAddress,
         module_name: str,
-    ) -> Dict[str, Any]:
-        """
-        Retrieves an individual module from a given account.
+    ) -> dict[str, Any]:
+        """Retrieves an individual module from a given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
@@ -283,8 +272,8 @@ class RestClient:
 
         Returns:
             Dict[str, Any]: An individual module from a given account.
-        """
 
+        """
         endpoint = ACCOUNT_MODULE_ENDPOINT.format(
             account_address=account_address, module_name=module_name
         )
@@ -293,10 +282,9 @@ class RestClient:
     async def account_modules(
         self,
         account_address: AccountAddress,
-        pagination: Optional[Pagination] = None,
-    ) -> Tuple[List[Dict[str, Any]], str]:
-        """
-        Retrieves all account modules from a given account.
+        pagination: Pagination | None = None,
+    ) -> tuple[list[dict[str, Any]], str]:
+        """Retrieves all account modules from a given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
@@ -306,8 +294,8 @@ class RestClient:
             Tuple[List[Dict[str, Any]], str]: A tuple containing,
                 - List[Dict[str, Any]]: All account modules from a given account.
                 - str: Cursor to retrieve the next page.
-        """
 
+        """
         endpoint = ACCOUNT_MODULES_ENDPOINT.format(account_address=account_address)
         params = pagination.to_params() if pagination else {}
         response = await self._get(endpoint=endpoint, params=params)
@@ -316,10 +304,9 @@ class RestClient:
     async def account_transactions(
         self,
         account_address: AccountAddress,
-        pagination: Optional[PaginationWithOrder] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Retrieves details of finalized transactions sent by a given account.
+        pagination: PaginationWithOrder | None = None,
+    ) -> list[dict[str, Any]]:
+        """Retrieves details of finalized transactions sent by a given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
@@ -328,8 +315,8 @@ class RestClient:
 
         Returns:
             List[Dict[str, Any]]: Details of finalized transactions sent by a given account.
-        """
 
+        """
         endpoint = ACCOUNT_TRANSACTIONS_ENDPOINT.format(account_address=account_address)
         params = pagination.to_params() if pagination else {}
         return (await self._get(endpoint=endpoint, params=params)).json()
@@ -337,10 +324,9 @@ class RestClient:
     async def account_coin_transactions(
         self,
         account_address: AccountAddress,
-        pagination: Optional[PaginationWithOrder] = None,
-    ) -> Tuple[List[Dict[str, Any]], str]:
-        """
-        Retrieves details of finalized coin deposit/withdraw type transactions associated with a given account.
+        pagination: PaginationWithOrder | None = None,
+    ) -> tuple[list[dict[str, Any]], str]:
+        """Retrieves details of finalized coin deposit/withdraw type transactions associated with a given account.
 
         Args:
             account_address (AccountAddress): Address of the account.
@@ -351,8 +337,8 @@ class RestClient:
                 - List[Dict[str, Any]]: Details of finalized coin deposit/withdraw type transactions associated with a
                     given account.
                 - str: Cursor to retrieve the next page.
-        """
 
+        """
         endpoint = ACCOUNT_COIN_TRANSACTIONS_ENDPOINT.format(
             account_address=account_address
         )
@@ -363,10 +349,9 @@ class RestClient:
     async def account_automated_transactions(
         self,
         account_address: AccountAddress,
-        pagination: Optional[AutomatedTransactionsPagination] = None,
-    ) -> Tuple[List[Dict[str, Any]], str]:
-        """
-        Retrieves details of finalized automated transactions based on the automation tasks registered by a given
+        pagination: AutomatedTransactionsPagination | None = None,
+    ) -> tuple[list[dict[str, Any]], str]:
+        """Retrieves details of finalized automated transactions based on the automation tasks registered by a given
         account.
 
         Args:
@@ -378,8 +363,8 @@ class RestClient:
                 - List[Dict[str, any]]: Details of finalized automated transactions details based on the automation
                     tasks registered by a given account.
                 - str: Cursor to retrieve the next page.
-        """
 
+        """
         endpoint = ACCOUNT_AUTOMATED_TRANSACTIONS_ENDPOINT.format(
             account_address=account_address
         )
@@ -387,48 +372,44 @@ class RestClient:
         response = await self._get(endpoint=endpoint, params=params)
         return response.json(), response.headers.get("x-supra-cursor", "")
 
-    async def transaction_by_hash(self, tx_hash: str) -> Dict[str, Any]:
-        """
-        Retrieves detail of a transaction by given transaction hash.
+    async def transaction_by_hash(self, tx_hash: str) -> dict[str, Any]:
+        """Retrieves detail of a transaction by given transaction hash.
 
         Args:
             tx_hash (str): The hash of the transaction.
 
         Returns:
             Dict[str, Any]: Detail of a transaction by given transaction hash.
-        """
 
+        """
         endpoint = TRANSACTION_BY_HASH_ENDPOINT.format(hash=tx_hash)
         return (await self._get(endpoint=endpoint)).json()
 
-    async def estimate_gas_price(self) -> Dict[str, Any]:
-        """
-        Provides statistics derived from the gas prices of recently executed transactions.
+    async def estimate_gas_price(self) -> dict[str, Any]:
+        """Provides statistics derived from the gas prices of recently executed transactions.
 
         Returns:
             Dict[str, Any]: Statistics derived from the gas prices of recently executed transactions.
-        """
 
+        """
         return (
             await self._get(endpoint=TRANSACTION_ESTIMATE_GAS_PRICE_ENDPOINT)
         ).json()
 
-    async def transaction_parameters(self) -> Dict[str, Any]:
-        """
-        Retrieve limits that a client must respect when composing a transaction.
+    async def transaction_parameters(self) -> dict[str, Any]:
+        """Retrieve limits that a client must respect when composing a transaction.
 
         Returns:
             Dict[str, Any]: limits that a client must respect when composing a transaction.
-        """
 
+        """
         return (await self._get(endpoint=TRANSACTION_PARAMETERS_ENDPOINT)).json()
 
     async def submit_transaction(
         self,
         signed_transaction: SignedTransaction,
     ) -> str:
-        """
-        Submits a given signed transaction to the Supra network.
+        """Submits a given signed transaction to the Supra network.
 
         This method wraps the given `signed_transaction` under `SupraTransaction`, serializes wrapped object using
         BCS serialization, submits serialized payload on the rpc node endpoint, and returns the transaction hash.
@@ -438,8 +419,8 @@ class RestClient:
 
         Returns:
             str: Transaction hash of the submitted transaction.
-        """
 
+        """
         headers = {"Content-Type": "application/x.supra.signed_transaction+bcs"}
         response = await self._post(
             endpoint=TRANSACTION_SUBMIT_TRANSACTION_ENDPOINT,
@@ -451,9 +432,8 @@ class RestClient:
             await self.wait_for_transaction(transaction_hash)
         return transaction_hash
 
-    async def wait_for_transaction(self, tx_hash: str) -> Dict[str, Any]:
-        """
-        Wait for a transaction till it's in a pending state and transaction wait timeout is not reached.
+    async def wait_for_transaction(self, tx_hash: str) -> dict[str, Any]:
+        """Wait for a transaction till it's in a pending state and transaction wait timeout is not reached.
 
         This method repeatedly checks the transaction status until it is no longer pending or until the configured
         timeout is reached. Returns the transaction data regardless of success or failure status.
@@ -463,8 +443,8 @@ class RestClient:
 
         Returns:
             Dict[str, Any]: The final transaction data once the transaction is no longer pending.
-        """
 
+        """
         start_time = time.monotonic()
         while (
             int(time.monotonic() - start_time)
@@ -475,15 +455,14 @@ class RestClient:
             if transaction_data.get("status") != "Pending":
                 return transaction_data
 
-        raise TransactionWaitTimeoutReached(
+        raise TransactionWaitTimeoutReachedError(
             tx_hash, self.client_config.transaction_wait_time_in_seconds
         )
 
     async def simulate_transaction(
         self, signed_transaction: SignedTransaction
-    ) -> Dict[str, Any]:
-        """
-        Simulates a given signed transaction.
+    ) -> dict[str, Any]:
+        """Simulates a given signed transaction.
 
         Currently, it is expected that signatures of authenticator will be null/invalid instead of being valid.
 
@@ -492,8 +471,8 @@ class RestClient:
 
         Returns:
             Dict[str, Any]: Transaction simulation result.
-        """
 
+        """
         authenticator_with_valid_signature = signed_transaction.authenticator
         authenticator_clone = copy.deepcopy(signed_transaction.authenticator)
         authenticator_clone.unset_signature()
@@ -511,12 +490,11 @@ class RestClient:
 
     async def create_raw_transaction(
         self,
-        sender: Union[Account, AccountAddress],
+        sender: Account | AccountAddress,
         transaction_payload: TransactionPayload,
-        sequence_number: Optional[int] = None,
+        sequence_number: int | None = None,
     ) -> RawTransaction:
-        """
-        Creates a raw transaction.
+        """Creates a raw transaction.
 
         This method builds a raw transaction with the provided sender, payload, and optionally a custom sequence number.
 
@@ -528,8 +506,8 @@ class RestClient:
 
         Returns:
             RawTransaction: The constructed raw transaction object.
-        """
 
+        """
         sender_address = sender.address() if isinstance(sender, Account) else sender
         sequence_number = sequence_number or await self.account_sequence_number(
             sender_address
@@ -548,10 +526,9 @@ class RestClient:
         self,
         sender: Account,
         transaction_payload: TransactionPayload,
-        sequence_number: Optional[int] = None,
+        sequence_number: int | None = None,
     ) -> SignedTransaction:
-        """
-        Creates a signed transaction.
+        """Creates a signed transaction.
 
         This method builds a raw transaction, signs it using the sender's key, wraps it in an authenticator,
         and generates signed transaction payload.
@@ -564,8 +541,8 @@ class RestClient:
 
         Returns:
             SignedTransaction: The constructed signed transaction object.
-        """
 
+        """
         raw_transaction = await self.create_raw_transaction(
             sender, transaction_payload, sequence_number
         )
@@ -576,11 +553,10 @@ class RestClient:
         self,
         sender: Account,
         fee_payer: Account,
-        secondary_accounts: List[Account],
+        secondary_accounts: list[Account],
         transaction_payload: TransactionPayload,
     ) -> SignedTransaction:
-        """
-        Creates a fee-payer authenticator type signed transaction.
+        """Creates a fee-payer authenticator type signed transaction.
 
         This method builds and signs a fee-payer authenticator type transaction, where the main sender, fee payer and
         one or more secondary accounts sign the same raw transaction.
@@ -593,8 +569,8 @@ class RestClient:
 
         Returns:
             SignedTransaction: The constructed multi-agent authenticator type signed transaction.
-        """
 
+        """
         fee_payer_raw_transaction = FeePayerRawTransaction(
             await self.create_raw_transaction(sender, transaction_payload),
             [x.address() for x in secondary_accounts],
@@ -621,11 +597,10 @@ class RestClient:
     async def create_multi_agent_transaction(
         self,
         sender: Account,
-        secondary_accounts: List[Account],
+        secondary_accounts: list[Account],
         transaction_payload: TransactionPayload,
     ) -> SignedTransaction:
-        """
-        Creates a multi-agent authenticator type signed transaction.
+        """Creates a multi-agent authenticator type signed transaction.
 
         This method builds and signs a multi-agent authenticator type transaction, where the main sender and one or
         more secondary accounts sign the same raw transaction.
@@ -637,8 +612,8 @@ class RestClient:
 
         Returns:
             SignedTransaction: The constructed multi-agent authenticator type signed transaction.
-        """
 
+        """
         multi_agent_raw_transaction = MultiAgentRawTransaction(
             await self.create_raw_transaction(sender, transaction_payload),
             [x.address() for x in secondary_accounts],
@@ -665,10 +640,9 @@ class RestClient:
         automation_gas_price_cap: int,
         automation_fee_cap_for_epoch: int,
         automation_expiration_timestamp_secs: int,
-        automation_aux_data: List[bytes],
+        automation_aux_data: list[bytes],
     ) -> str:
-        """
-        Registers Supra automation task.
+        """Registers Supra automation task.
 
         Args:
             owner_account (Account): Account registering an automation task.
@@ -682,8 +656,8 @@ class RestClient:
 
         Returns:
             str: Transaction hash.
-        """
 
+        """
         automation_params_v1 = AutomationRegistrationParamsV1(
             automated_function,
             automation_max_gas_amount,
@@ -705,9 +679,8 @@ class RestClient:
         self,
         owner_account: Account,
         task_index: int,
-    ) -> Union[Dict[str, Any], str]:
-        """
-        Cancels Supra automation task.
+    ) -> dict[str, Any] | str:
+        """Cancels Supra automation task.
 
         Args:
             owner_account (Account): Automation task owner.
@@ -715,8 +688,8 @@ class RestClient:
 
         Returns:
             str: Transaction hash.
-        """
 
+        """
         transaction_arguments = [
             TransactionArgument(task_index, Serializer.u64),
         ]
@@ -735,10 +708,9 @@ class RestClient:
     async def stop_automation_tasks(
         self,
         owner_account: Account,
-        task_ids: List[int],
-    ) -> Union[Dict[str, Any], str]:
-        """
-        Stops list of Supra automation tasks.
+        task_ids: list[int],
+    ) -> dict[str, Any] | str:
+        """Stops list of Supra automation tasks.
 
         Args:
             owner_account (Account): Automation task owner.
@@ -746,8 +718,8 @@ class RestClient:
 
         Returns:
             str: Transaction hash.
-        """
 
+        """
         transaction_arguments = [
             TransactionArgument(
                 task_ids, Serializer.sequence_serializer(Serializer.u64)
@@ -770,10 +742,9 @@ class RestClient:
         sender: Account,
         recipient: AccountAddress,
         amount: int,
-        sequence_number: Optional[int] = None,
+        sequence_number: int | None = None,
     ) -> str:
-        """
-        Transfers given amount of SupraCoin to a given recipient.
+        """Transfers given amount of SupraCoin to a given recipient.
 
         This method builds an `EntryFunction` payload for transferring the `SupraCoin`, signs it with the sender's
         account, and submits it to the network.
@@ -787,8 +758,8 @@ class RestClient:
 
         Returns:
             str: Transaction hash.
-        """
 
+        """
         return await self.transfer_coins(
             sender, recipient, "0x1::supra_coin::SupraCoin", amount, sequence_number
         )
@@ -799,10 +770,9 @@ class RestClient:
         recipient: AccountAddress,
         coin_type: str,
         amount: int,
-        sequence_number: Optional[int] = None,
+        sequence_number: int | None = None,
     ) -> str:
-        """
-        Transfer a given coin type coins to a recipient.
+        """Transfer a given coin type coins to a recipient.
 
         This method builds a coin transfer payload for any supported coin type, signs it with the sender's account,
         and submits it to the network.
@@ -817,8 +787,8 @@ class RestClient:
 
         Returns:
             str: Transaction hash.
-        """
 
+        """
         transaction_arguments = [
             TransactionArgument(recipient, Serializer.struct),
             TransactionArgument(amount, Serializer.u64),
@@ -837,8 +807,7 @@ class RestClient:
     async def transfer_object(
         self, owner: Account, object_address: AccountAddress, to: AccountAddress
     ) -> str:
-        """
-        Transfer an object to another account.
+        """Transfer an object to another account.
 
         This method builds an object transfer payload, signs it with the owner's account, and submits it to the network.
 
@@ -849,8 +818,8 @@ class RestClient:
 
         Returns:
             str: Transaction hash.
-        """
 
+        """
         transaction_arguments = [
             TransactionArgument(object_address, Serializer.struct),
             TransactionArgument(to, Serializer.struct),
@@ -868,10 +837,9 @@ class RestClient:
         return await self.submit_transaction(signed_transaction)
 
     async def publish_package(
-        self, module_publisher: Account, package_metadata: bytes, modules: List[bytes]
+        self, module_publisher: Account, package_metadata: bytes, modules: list[bytes]
     ) -> str:
-        """
-        Publishes package on a given module publisher account.
+        """Publishes package on a given module publisher account.
 
         Args:
             module_publisher (Account): Module publisher account.
@@ -880,6 +848,7 @@ class RestClient:
 
         Returns:
             str: Transaction hash.
+
         """
         transaction_arguments = [
             TransactionArgument(package_metadata, Serializer.to_bytes),
@@ -901,11 +870,10 @@ class RestClient:
     async def view(
         self,
         function: str,
-        type_arguments: List[str],
-        arguments: List[str],
-    ) -> List[Any]:
-        """
-        Execute a view Move function with the given parameters and return its execution result.
+        type_arguments: list[str],
+        arguments: list[str],
+    ) -> list[Any]:
+        """Execute a view Move function with the given parameters and return its execution result.
 
         Args:
             function (str): Entry function id is string representation of an entry function defined on-chain.
@@ -914,8 +882,8 @@ class RestClient:
 
         Returns:
             List[Any]: Execution results of the view function.
-        """
 
+        """
         data = {
             "function": function,
             "type_arguments": type_arguments,
@@ -931,9 +899,8 @@ class RestClient:
         key_type: str,
         value_type: str,
         key: Any,
-    ) -> Dict[str, Any]:
-        """
-        Retrieves an item from a table by key.
+    ) -> dict[str, Any]:
+        """Retrieves an item from a table by key.
 
         Args:
             table_handle (str): Table handle to lookup. Should be retrieved using account resources API.
@@ -943,8 +910,8 @@ class RestClient:
 
         Returns:
             Dict[str, Any]: Item associated with the key in the table.
-        """
 
+        """
         endpoint = TABLE_ITEMS_ENDPOINT.format(table_handle=table_handle)
         data = {
             "key_type": key_type,
@@ -954,10 +921,9 @@ class RestClient:
         return (await self._post(endpoint=endpoint, data=data)).json()
 
     async def events_by_type(
-        self, event_type: str, pagination: Optional[EventsPagination] = None
-    ) -> Tuple[List[Dict[str, Any]], str]:
-        """
-        Retrieves events of a given type.
+        self, event_type: str, pagination: EventsPagination | None = None
+    ) -> tuple[list[dict[str, Any]], str]:
+        """Retrieves events of a given type.
 
         Args:
             event_type (str): The fully qualified name of the event struct e.g. '0x1::coin::CoinDeposit'.
@@ -967,45 +933,42 @@ class RestClient:
             Tuple[List[Dict[str, Any]], str]: A tuple containing,
                 - List[Dict[str, Any]]: List of events.
                 - str: Cursor to retrieve the next page.
-        """
 
+        """
         endpoint = EVENTS_BY_TYPE_ENDPOINT.format(event_type=event_type)
         params = pagination.to_params() if pagination else {}
         response = await self._get(endpoint=endpoint, params=params)
         return response.json()["data"], response.headers.get("x-supra-cursor", "")
 
-    async def latest_block(self) -> Dict[str, Any]:
-        """
-        Retrieves the metadata information of the most recently finalized and executed block.
+    async def latest_block(self) -> dict[str, Any]:
+        """Retrieves the metadata information of the most recently finalized and executed block.
 
         Returns:
             Dict[str, Any]: Metadata information of the most recently finalized and executed block.
-        """
 
+        """
         return (await self._get(endpoint=LATEST_BLOCK_ENDPOINT)).json()
 
-    async def block_by_hash(self, block_hash: str) -> Dict[str, Any]:
-        """
-        Retrieves the header and execution output statistics of the block with the given hash.
+    async def block_by_hash(self, block_hash: str) -> dict[str, Any]:
+        """Retrieves the header and execution output statistics of the block with the given hash.
 
         Args:
             block_hash (str): The hash of the block.
 
         Returns:
             Dict[str, Any]: Header and execution output statistics of the block with the given hash.
-        """
 
+        """
         endpoint = BLOCK_BY_HASH_ENDPOINT.format(block_hash=block_hash)
         return (await self._get(endpoint=endpoint)).json()
 
     async def block_by_height(
         self,
         height: int,
-        transaction_type: Optional[TransactionType] = None,
+        transaction_type: TransactionType | None = None,
         with_finalized_transaction: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        Retrieves information about the block that has been finalized at the given height.
+    ) -> dict[str, Any]:
+        """Retrieves information about the block that has been finalized at the given height.
 
         Args:
             height (int): The height of the block.
@@ -1015,10 +978,10 @@ class RestClient:
 
         Returns:
             Dict[str, Any]: Information about the block that has been finalized at the given height.
-        """
 
+        """
         endpoint = BLOCK_BY_HEIGHT_ENDPOINT.format(height=height)
-        params: Dict[str, Union[str, bool]] = {
+        params: dict[str, str | bool] = {
             "with_finalized_transactions": with_finalized_transaction
         }
         if transaction_type:
@@ -1026,10 +989,9 @@ class RestClient:
         return (await self._get(endpoint=endpoint, params=params)).json()
 
     async def txs_by_block(
-        self, block_hash: str, transaction_type: Optional[TransactionType] = None
-    ) -> List[str]:
-        """
-        Retrieves a list containing the hashes of the transactions that were finalized in the block with the given hash
+        self, block_hash: str, transaction_type: TransactionType | None = None
+    ) -> list[str]:
+        """Retrieves a list containing the hashes of the transactions that were finalized in the block with the given hash
         in the order that they were executed.
 
         Args:
@@ -1039,8 +1001,8 @@ class RestClient:
 
         Returns:
             List[str]: List transaction's hash that were finalized in the given block.
-        """
 
+        """
         endpoint = BLOCK_TRANSACTIONS_ENDPOINT.format(block_hash=block_hash)
         params = (
             {"transaction_type": transaction_type.value} if transaction_type else {}
@@ -1048,21 +1010,19 @@ class RestClient:
         return (await self._get(endpoint=endpoint, params=params)).json()
 
     async def latest_consensus_block(self) -> bytes:
-        """
-        Retrieves the BCS bytes of the latest consensus block.
+        """Retrieves the BCS bytes of the latest consensus block.
 
         Returns:
              bytes: BCS bytes of the latest consensus block.
-        """
 
+        """
         self.client_config.raise_if_access_token_not_exists()
         return (await self._get(endpoint=LATEST_CONSENSUS_BLOCK_ENDPOINT)).read()
 
     async def consensus_block_by_height(
         self, height: int, with_batches: bool = False
     ) -> bytes:
-        """
-        Retrieves the BCS bytes of the consensus block at the requested height.
+        """Retrieves the BCS bytes of the consensus block at the requested height.
 
         Args:
             height (int): The height of the consensus block to retrieve.
@@ -1070,21 +1030,21 @@ class RestClient:
 
         Returns:
             bytes: BCS bytes of the consensus block at the requested height.
-        """
 
+        """
         endpoint = CONSENSUS_BLOCK_BY_HEIGHT_ENDPOINT.format(height=height)
         params = {"with_batches": str(with_batches).lower()}
         return (await self._get(endpoint=endpoint, params=params)).read()
 
     async def committee_authorization(self, epoch: int) -> bytes:
-        """
-        Retrieves the BCS bytes of the Committee Authorization for the given epoch.
+        """Retrieves the BCS bytes of the Committee Authorization for the given epoch.
 
         Args:
             epoch (int): The epoch number.
 
         Returns:
             bytes: BCS bytes of the Committee Authorization for the requested epoch.
+
         """
         endpoint = COMMITTEE_AUTHORIZATION_ENDPOINT.format(epoch=epoch)
         return (await self._get(endpoint=endpoint)).read()
@@ -1096,12 +1056,11 @@ class RestClient:
     async def _get(
         self,
         endpoint: str,
-        headers: Optional[Dict[str, str]] = None,
-        params: Optional[Dict[str, Any]] = None,
-        strict_mode: Optional[bool] = True,
+        headers: dict[str, str] | None = None,
+        params: dict[str, Any] | None = None,
+        strict_mode: bool | None = True,
     ) -> httpx.Response:
-        """
-        Performs an asynchronous GET request.
+        """Performs an asynchronous GET request.
 
         Args:
             endpoint (str): Endpoint to call.
@@ -1111,8 +1070,8 @@ class RestClient:
 
         Returns:
             httpx.Response: The response from the server.
-        """
 
+        """
         params = params or {}
         params = {key: val for key, val in params.items() if val is not None}
         headers = headers or {}
@@ -1130,13 +1089,12 @@ class RestClient:
     async def _post(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, Any]] = None,
-        data: Optional[Union[Dict[str, Any], bytes]] = None,
-        strict_mode: Optional[bool] = True,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+        data: dict[str, Any] | bytes | None = None,
+        strict_mode: bool | None = True,
     ) -> httpx.Response:
-        """
-        Performs an asynchronous POST request.
+        """Performs an asynchronous POST request.
 
         Args:
             endpoint (str): API endpoint.
@@ -1147,13 +1105,13 @@ class RestClient:
 
         Returns:
             httpx.Response: The response from the server.
-        """
 
+        """
         params = params or {}
         params = {key: val for key, val in params.items() if val is not None}
         headers = headers or {}
 
-        content: Union[str, bytes]
+        content: str | bytes
         if not isinstance(data, bytes):
             headers["Content-Type"] = "application/json"
             content = json.dumps(data)
@@ -1178,14 +1136,13 @@ class FaucetClient:
     rest_client: RestClient
 
     def __init__(self, base_url: str, rest_client: RestClient):
-        """
-        Initializes the FaucetClient.
+        """Initializes the FaucetClient.
 
         Args:
             base_url (str): Faucet service URL.
             rest_client (RestClient): Instance of RestClient to use.
-        """
 
+        """
         self.base_url = base_url
         self.rest_client = rest_client
 
@@ -1194,29 +1151,28 @@ class FaucetClient:
 
     async def faucet(
         self, address: AccountAddress, wait_for_faucet: bool = True
-    ) -> Optional[str]:
-        """
-        Requests faucet funds to be sent to the given account address.
+    ) -> str | None:
+        """Requests faucet funds to be sent to the given account address.
 
         Args:
             address (AccountAddress): The target account address to receive funds.
             wait_for_faucet (bool): Flag indicates whether wait for faucet should be done or not.
+
         Returns:
             str: Faucet transaction hash if faucet request is accepted else None.
-        """
 
+        """
         endpoint = FAUCET_ENDPOINT.format(address=address)
         res_data = (await self._get(endpoint=endpoint)).json()
-        may_be_tx_hash = res_data["Accepted"] if "Accepted" in res_data else None
+        may_be_tx_hash = res_data.get("Accepted", None)
         if wait_for_faucet:
             if not may_be_tx_hash:
-                raise FaucetRequestNotAccepted
+                raise FaucetRequestNotAcceptedError
             await self.wait_for_faucet(may_be_tx_hash)
         return may_be_tx_hash
 
     async def wait_for_faucet(self, faucet_tx_hash: str):
-        """
-        Wait for a faucet transaction till it's in a pending state and transaction wait timeout is not reached.
+        """Wait for a faucet transaction till it's in a pending state and transaction wait timeout is not reached.
 
         Note: This method is similar to the `RestClient.wait_for_transaction`, this method uses
         `FaucetClient.faucet_transaction_by_hash` method to get transaction data of the faucet transaction, it uses that
@@ -1228,6 +1184,7 @@ class FaucetClient:
 
         Returns:
             Dict[str, Any]: The final transaction data once the faucet transaction is no longer pending.
+
         """
         start_time = time.monotonic()
         while (
@@ -1241,22 +1198,21 @@ class FaucetClient:
             if transaction_data.get("status") != "Pending":
                 return transaction_data
 
-        raise TransactionWaitTimeoutReached(
+        raise TransactionWaitTimeoutReachedError(
             faucet_tx_hash,
             self.rest_client.client_config.transaction_wait_time_in_seconds,
         )
 
-    async def faucet_transaction_by_hash(self, tx_hash: str) -> Dict[str, Any]:
-        """
-        Retrieves details of a faucet transaction by its hash.
+    async def faucet_transaction_by_hash(self, tx_hash: str) -> dict[str, Any]:
+        """Retrieves details of a faucet transaction by its hash.
 
         Args:
             tx_hash (str): The hash of the faucet transaction.
 
         Returns:
             Dict[str, Any]: Faucet transaction details.
-        """
 
+        """
         endpoint = FAUCET_TRANSACTION_ENDPOINT.format(hash=tx_hash)
         return (await self._get(endpoint=endpoint)).json()
 
@@ -1264,16 +1220,15 @@ class FaucetClient:
         self,
         endpoint: str,
     ) -> httpx.Response:
-        """
-        Performs an asynchronous GET request.
+        """Performs an asynchronous GET request.
 
         Args:
             endpoint (str): Endpoint to call.
 
         Returns:
             httpx.Response: The response from the server.
-        """
 
+        """
         response = await self.rest_client.client.get(
             url=urljoin(self.base_url, endpoint)
         )
@@ -1283,11 +1238,11 @@ class FaucetClient:
 
 
 class ApiError(Exception):
-    """
-    Exception raised when the API returns a non-200 response.
+    """Exception raised when the API returns a non-200 response.
 
     Attributes:
         status_code (int): The HTTP status code returned.
+
     """
 
     endpoint: str
@@ -1298,12 +1253,12 @@ class ApiError(Exception):
         super().__init__(f"{{message: {message}, status_code: {status_code}}}")
 
 
-class TransactionWaitTimeoutReached(Exception):
-    """
-    Exception raised when the transaction is in 'Pending' state even after max transaction wait time.
+class TransactionWaitTimeoutReachedError(Exception):
+    """Exception raised when the transaction is in 'Pending' state even after max transaction wait time.
 
     Attributes:
         tx_hash (str): Transaction hash.
+
     """
 
     def __init__(self, tx_hash: str, transaction_wait_time_in_seconds: int):
@@ -1313,19 +1268,15 @@ class TransactionWaitTimeoutReached(Exception):
         )
 
 
-class AuthorizationKeyNotSpecified(Exception):
-    """
-    Exception raised when consensus api endpoints are accessed without defining `access_token` in `ClientConfig`.
-    """
+class AuthorizationKeyNotSpecifiedError(Exception):
+    """Exception raised when consensus api endpoints are accessed without defining `access_token` in `ClientConfig`."""
 
     def __init__(self):
         super().__init__("Authorization key is not specified")
 
 
-class FaucetRequestNotAccepted(Exception):
-    """
-    Exception raised when faucet request is not accepted by the faucet rpc node.
-    """
+class FaucetRequestNotAcceptedError(Exception):
+    """Exception raised when faucet request is not accepted by the faucet rpc node."""
 
     def __init__(self):
         super().__init__("Faucet request is not accepted by the rpc node")
@@ -1753,7 +1704,7 @@ class TestSupraAutomationTransactions(unittest.IsolatedAsyncioTestCase):
 
     async def _get_event_data_from_tx(
         self, tx_hash: str, event_type: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         tx_data = await self.rest_client.transaction_by_hash(tx_hash)
         for event in tx_data["output"]["Move"]["events"]:
             if event["type"] == event_type:

@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 RPC_API_PREFIX = "rpc/v3"
 
@@ -66,26 +66,26 @@ FAUCET_TRANSACTION_ENDPOINT = f"{RPC_API_PREFIX}/wallet/faucet/transactions/{{ha
 
 @dataclass(frozen=True)
 class Pagination:
-    """
-    Generic pagination parameters.
+    """Generic pagination parameters.
 
     Attributes:
         count: Number of items to return, default value is 20 and maximum value is 100.
             In case of `count`>100 only 100 items will be returned.
         start: Cursor or starting point specifying where to start for pagination.
+
     """
 
-    count: Optional[int] = None
-    start: Optional[Union[str, int]] = None
+    count: int | None = None
+    start: str | int | None = None
 
-    def to_params(self) -> Dict[str, Any]:
-        """
-        Converts the pagination configuration to a dictionary of query parameters.
+    def to_params(self) -> dict[str, Any]:
+        """Converts the pagination configuration to a dictionary of query parameters.
 
         Returns:
             Dict[str, Any]: Dictionary of parameters for HTTP request.
+
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if self.count is not None:
             params["count"] = self.count
         if self.start is not None:
@@ -95,23 +95,23 @@ class Pagination:
 
 @dataclass(frozen=True)
 class PaginationWithOrder(Pagination):
-    """
-    Generic pagination parameters with ordering.
+    """Generic pagination parameters with ordering.
 
     Attributes:
         ascending: Flag indicating order of lookup. If True, results are in ascending order.
+
     """
 
-    ascending: Optional[bool] = None
+    ascending: bool | None = None
 
-    def to_params(self) -> Dict[str, Any]:
-        """
-        Converts the pagination configuration to a dictionary of query parameters.
+    def to_params(self) -> dict[str, Any]:
+        """Converts the pagination configuration to a dictionary of query parameters.
 
         Returns:
             Dict[str, Any]: Dictionary of parameters for HTTP request.
+
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if self.count is not None:
             params["count"] = self.count
         if self.start is not None:
@@ -123,29 +123,28 @@ class PaginationWithOrder(Pagination):
 
 @dataclass(frozen=True)
 class AutomatedTransactionsPagination:
-    """
-    Pagination parameters for automation transaction endpoint.
+    """Pagination parameters for automation transaction endpoint.
 
     Attributes:
         ascending: Flag indicating order of lookup. If True, results are in ascending order.
         block_height: Start block height to consider for transaction retrieval.
         count: Number of items to return, default value is 20 and maximum value is 100.
             In case of `count`>100 only 100 items will be returned.
+
     """
 
-    ascending: Optional[bool] = None
-    block_height: Optional[int] = None
-    count: Optional[int] = None
+    ascending: bool | None = None
+    block_height: int | None = None
+    count: int | None = None
 
-    def to_params(self) -> Dict[str, Any]:
-        """
-        Converts the pagination configuration to a dictionary of query parameters.
+    def to_params(self) -> dict[str, Any]:
+        """Converts the pagination configuration to a dictionary of query parameters.
 
         Returns:
             Dict[str, Any]: Dictionary of parameters for HTTP request.
-        """
 
-        params: Dict[str, Any] = {}
+        """
+        params: dict[str, Any] = {}
         if self.ascending is not None:
             params["ascending"] = str(self.ascending).lower()
         if self.block_height is not None:
@@ -157,29 +156,29 @@ class AutomatedTransactionsPagination:
 
 @dataclass(frozen=True)
 class EventsPagination:
-    """
-    Pagination parameters for events retrieval endpoint.
+    """Pagination parameters for events retrieval endpoint.
 
     Attributes:
         start_height (Optional[int]): Starting block height (inclusive).
         end_height (Optional[int]): Ending block height (exclusive).
         limit (Optional[int]): Maximum number of events to return. Defaults to 20, max 100.
         start (Optional[str]): The cursor to start the query from.
+
     """
 
-    start_height: Optional[int] = None
-    end_height: Optional[int] = None
-    limit: Optional[int] = None
-    start: Optional[str] = None
+    start_height: int | None = None
+    end_height: int | None = None
+    limit: int | None = None
+    start: str | None = None
 
-    def to_params(self) -> Dict[str, Any]:
-        """
-        Converts the event query configuration to a dictionary of query parameters.
+    def to_params(self) -> dict[str, Any]:
+        """Converts the event query configuration to a dictionary of query parameters.
 
         Returns:
             Dict[str, Any]: Dictionary of parameters for HTTP request.
+
         """
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if self.start_height:
             params["start_height"] = self.start_height
         if self.end_height is not None:

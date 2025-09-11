@@ -1,6 +1,5 @@
 from _typeshed import Incomplete
-from behave import i18n as i18n
-from behave import model as model
+from behave import i18n as i18n, model as model
 
 DEFAULT_LANGUAGE: str
 

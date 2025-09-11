@@ -1,3 +1,7 @@
+[build-system]
+requires = ["uv_build>=0.8.15,<0.9.0"]
+build-backend = "uv_build"
+
 [project]
 name = "supra-sdk"
 version = "0.1.0"
@@ -20,18 +24,56 @@ Repository = "https://github.com/Entropy-Foundation/aptos-python-sdk/"
 
 [tool.ruff]
 line-length = 88
+target-version = "py312"
+fix = true
 
 [tool.ruff.lint]
-ignore = ["E203", "E501", "E701", "F822", "F403", "F405"]
+select = [
+    # pyflakes
+    "F",
+    # pycodestyle
+    "E",
+    "W",
+    # flake8-bugbear
+    "B",
+    # flake8-comprehensions
+    # "C",
+    # flake8-async
+    "ASYNC",
+    # flake8-pie
+    "PIE",
+    # flake8-simplify
+    "SIM",
+    # flake8-unused-argument
+    "ARG",
+    # pep8-naming
+    "N",
+    # pydocstyle
+    # "D",
+    # isort
+    "I",
+    # pyupgrade
+    "UP",
+    # Ruff-specific rules
+    "RUF",
+]
+ignore = ["E203", "E501", "E701", "B017", "RUF012"]
 exclude = ["__init__.py"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint.isort]
+known-first-party = ["supra_sdk"]
+combine-as-imports = true
 
 [tool.uv.build-backend]
 module-name = "supra_sdk"
 module-root = ""
 
-[build-system]
-requires = ["uv_build>=0.8.15,<0.9.0"]
-build-backend = "uv_build"
-
 [dependency-groups]
-dev = ["ruff>=0.12.12"]
+dev = [
+    "aiofiles>=24.1.0",
+    "coverage>=7.10.6",
+    "ruff>=0.13.0",
+]

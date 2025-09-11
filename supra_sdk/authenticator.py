@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import typing
-from typing import List
 
 from supra_sdk import asymmetric_crypto, asymmetric_crypto_wrapper, ed25519
 from supra_sdk.account_address import AccountAddress
@@ -13,8 +12,7 @@ from supra_sdk.bcs import Deserializer, Serializer
 
 
 class Authenticator:
-    """
-    Each transaction submitted to the Supra blockchain contains a `TransactionAuthenticator`.
+    """Each transaction submitted to the Supra blockchain contains a `TransactionAuthenticator`.
     During transaction execution, the executor will check if every `AccountAuthenticator`'s
     signature on the transaction hash is well-formed and whether `AccountAuthenticator`'s  matches
     the `AuthenticationKey` stored under the participating signer's account address.
@@ -190,14 +188,14 @@ class Ed25519Authenticator:
 
 class FeePayerAuthenticator:
     sender: AccountAuthenticator
-    secondary_signers: List[typing.Tuple[AccountAddress, AccountAuthenticator]]
-    fee_payer: typing.Tuple[AccountAddress, AccountAuthenticator]
+    secondary_signers: list[tuple[AccountAddress, AccountAuthenticator]]
+    fee_payer: tuple[AccountAddress, AccountAuthenticator]
 
     def __init__(
         self,
         sender: AccountAuthenticator,
-        secondary_signers: List[typing.Tuple[AccountAddress, AccountAuthenticator]],
-        fee_payer: typing.Tuple[AccountAddress, AccountAuthenticator],
+        secondary_signers: list[tuple[AccountAddress, AccountAuthenticator]],
+        fee_payer: tuple[AccountAddress, AccountAuthenticator],
     ):
         self.sender = sender
         self.secondary_signers = secondary_signers
@@ -218,7 +216,7 @@ class FeePayerAuthenticator:
     def fee_payer_address(self) -> AccountAddress:
         return self.fee_payer[0]
 
-    def secondary_addresses(self) -> List[AccountAddress]:
+    def secondary_addresses(self) -> list[AccountAddress]:
         return [x[0] for x in self.secondary_signers]
 
     def verify(self, data: bytes) -> bool:
@@ -239,7 +237,7 @@ class FeePayerAuthenticator:
         fee_payer_authenticator = deserializer.struct(AccountAuthenticator)
         return FeePayerAuthenticator(
             sender,
-            list(zip(secondary_addresses, secondary_authenticators)),
+            list(zip(secondary_addresses, secondary_authenticators, strict=False)),
             (fee_payer_address, fee_payer_authenticator),
         )
 
@@ -259,12 +257,12 @@ class FeePayerAuthenticator:
 
 class MultiAgentAuthenticator:
     sender: AccountAuthenticator
-    secondary_signers: List[typing.Tuple[AccountAddress, AccountAuthenticator]]
+    secondary_signers: list[tuple[AccountAddress, AccountAuthenticator]]
 
     def __init__(
         self,
         sender: AccountAuthenticator,
-        secondary_signers: List[typing.Tuple[AccountAddress, AccountAuthenticator]],
+        secondary_signers: list[tuple[AccountAddress, AccountAuthenticator]],
     ):
         self.sender = sender
         self.secondary_signers = secondary_signers
@@ -277,7 +275,7 @@ class MultiAgentAuthenticator:
             and self.secondary_signers == other.secondary_signers
         )
 
-    def secondary_addresses(self) -> List[AccountAddress]:
+    def secondary_addresses(self) -> list[AccountAddress]:
         return [x[0] for x in self.secondary_signers]
 
     def verify(self, data: bytes) -> bool:
@@ -293,7 +291,8 @@ class MultiAgentAuthenticator:
             AccountAuthenticator.deserialize
         )
         return MultiAgentAuthenticator(
-            sender, list(zip(secondary_addresses, secondary_authenticators))
+            sender,
+            list(zip(secondary_addresses, secondary_authenticators, strict=False)),
         )
 
     def serialize(self, serializer: Serializer):

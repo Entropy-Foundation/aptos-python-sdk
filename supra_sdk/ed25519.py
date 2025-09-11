@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import unittest
-from typing import List, Tuple, cast
+from typing import cast
 
 from nacl.signing import SigningKey, VerifyKey
 
@@ -100,14 +100,14 @@ class PublicKey(asymmetric_crypto.PublicKey):
 
 
 class MultiPublicKey(asymmetric_crypto.PublicKey):
-    keys: List[PublicKey]
+    keys: list[PublicKey]
     threshold: int
 
     MIN_KEYS = 2
     MAX_KEYS = 32
     MIN_THRESHOLD = 1
 
-    def __init__(self, keys: List[PublicKey], threshold: int):
+    def __init__(self, keys: list[PublicKey], threshold: int):
         assert self.MIN_KEYS <= len(keys) <= self.MAX_KEYS, (
             f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys."
         )
@@ -142,7 +142,7 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
     @staticmethod
     def from_crypto_bytes(indata: bytes) -> MultiPublicKey:
         total_keys = int(len(indata) / PublicKey.LENGTH)
-        keys: List[PublicKey] = []
+        keys: list[PublicKey] = []
         for idx in range(total_keys):
             start = idx * PublicKey.LENGTH
             end = (idx + 1) * PublicKey.LENGTH
@@ -202,10 +202,10 @@ class Signature(asymmetric_crypto.Signature):
 
 
 class MultiSignature(asymmetric_crypto.Signature):
-    signatures: List[Tuple[int, Signature]]
+    signatures: list[tuple[int, Signature]]
     BITMAP_NUM_OF_BYTES: int = 4
 
-    def __init__(self, signatures: List[Tuple[int, Signature]]):
+    def __init__(self, signatures: list[tuple[int, Signature]]):
         for signature in signatures:
             assert signature[0] < self.BITMAP_NUM_OF_BYTES * 8, (
                 "bitmap value exceeds maximum value"
@@ -223,7 +223,7 @@ class MultiSignature(asymmetric_crypto.Signature):
     @staticmethod
     def from_key_map(
         public_key: MultiPublicKey,
-        signatures_map: List[Tuple[PublicKey, Signature]],
+        signatures_map: list[tuple[PublicKey, Signature]],
     ) -> MultiSignature:
         signatures = []
 

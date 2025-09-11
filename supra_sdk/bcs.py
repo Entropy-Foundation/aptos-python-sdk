@@ -1,18 +1,14 @@
 # Copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-This is a simple BCS serializer and deserializer. Learn more at https://github.com/diem/bcs
-"""
+"""This is a simple BCS serializer and deserializer. Learn more at https://github.com/diem/bcs"""
 
 from __future__ import annotations
 
 import io
 import typing
 import unittest
-from typing import Dict, List
-
-from typing_extensions import Protocol
+from typing import Protocol
 
 MAX_U8 = 2**8 - 1
 MAX_U16 = 2**16 - 1
@@ -75,9 +71,9 @@ class Deserializer:
         self,
         key_decoder: typing.Callable[[Deserializer], typing.Any],
         value_decoder: typing.Callable[[Deserializer], typing.Any],
-    ) -> Dict[typing.Any, typing.Any]:
+    ) -> dict[typing.Any, typing.Any]:
         length = self.uleb128()
-        values: Dict = {}
+        values: dict = {}
         while len(values) < length:
             key = key_decoder(self)
             value = value_decoder(self)
@@ -87,9 +83,9 @@ class Deserializer:
     def sequence(
         self,
         value_decoder: typing.Callable[[Deserializer], typing.Any],
-    ) -> List[typing.Any]:
+    ) -> list[typing.Any]:
         length = self.uleb128()
-        values: List = []
+        values: list = []
         while len(values) < length:
             values.append(value_decoder(self))
         return values
@@ -169,7 +165,7 @@ class Serializer:
 
     def map(
         self,
-        values: typing.Dict[typing.Any, typing.Any],
+        values: dict[typing.Any, typing.Any],
         key_encoder: typing.Callable[[Serializer, typing.Any], None],
         value_encoder: typing.Callable[[Serializer, typing.Any], None],
     ):
@@ -193,7 +189,7 @@ class Serializer:
 
     def sequence(
         self,
-        values: typing.List[typing.Any],
+        values: list[typing.Any],
         value_encoder: typing.Callable[[Serializer, typing.Any], None],
     ):
         self.uleb128(len(values))

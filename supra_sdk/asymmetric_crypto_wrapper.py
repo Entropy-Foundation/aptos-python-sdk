@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple, cast
+from typing import cast
 
 from supra_sdk import asymmetric_crypto, ed25519
 from supra_sdk.bcs import Deserializer, Serializer
@@ -90,14 +90,14 @@ class Signature(asymmetric_crypto.Signature):
 
 
 class MultiPublicKey(asymmetric_crypto.PublicKey):
-    keys: List[PublicKey]
+    keys: list[PublicKey]
     threshold: int
 
     MIN_KEYS = 2
     MAX_KEYS = 32
     MIN_THRESHOLD = 1
 
-    def __init__(self, keys: List[asymmetric_crypto.PublicKey], threshold: int):
+    def __init__(self, keys: list[asymmetric_crypto.PublicKey], threshold: int):
         assert self.MIN_KEYS <= len(keys) <= self.MAX_KEYS, (
             f"Must have between {self.MIN_KEYS} and {self.MAX_KEYS} keys."
         )
@@ -159,10 +159,10 @@ class MultiPublicKey(asymmetric_crypto.PublicKey):
 
 
 class MultiSignature(asymmetric_crypto.Signature):
-    signatures: List[Tuple[int, Signature]]
+    signatures: list[tuple[int, Signature]]
     BITMAP_NUM_OF_BYTES: int = 4
 
-    def __init__(self, signatures: List[Tuple[int, asymmetric_crypto.Signature]]):
+    def __init__(self, signatures: list[tuple[int, asymmetric_crypto.Signature]]):
         # Sort first to ensure no issues in order
         # signatures.sort(key=lambda x: x[0])
         self.signatures = []
@@ -192,7 +192,7 @@ class MultiSignature(asymmetric_crypto.Signature):
         sig_index = 0
         indexed_signatures = []
 
-        for i in range(0, num_bits):
+        for i in range(num_bits):
             has_signature = (bitmap & index_to_bitmap_value(i)) != 0
             if has_signature:
                 indexed_signatures.append((i, signatures[sig_index]))

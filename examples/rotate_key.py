@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-from typing import List, cast
+from typing import cast
 
 import supra_sdk.asymmetric_crypto as asymmetric_crypto
 import supra_sdk.ed25519 as ed25519
@@ -64,13 +64,13 @@ async def rotate_auth_key_ed25519_payload(
 async def rotate_auth_key_multi_ed25519_payload(
     rest_client: RestClient,
     from_account: Account,
-    private_keys: List[ed25519.PrivateKey],
+    private_keys: list[ed25519.PrivateKey],
 ) -> TransactionPayload:
     to_accounts = list(
         map(lambda private_key: Account.load_key(private_key.hex()), private_keys)
     )
     public_keys = list(map(lambda account: account.public_key(), to_accounts))
-    public_key = ed25519.MultiPublicKey(cast(List[ed25519.PublicKey], public_keys), 1)
+    public_key = ed25519.MultiPublicKey(cast(list[ed25519.PublicKey], public_keys), 1)
 
     rotation_proof_challenge = RotationProofChallenge(
         sequence_number=await rest_client.account_sequence_number(

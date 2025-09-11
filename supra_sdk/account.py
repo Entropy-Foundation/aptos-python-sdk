@@ -66,7 +66,6 @@ class Account:
 
     def address(self) -> AccountAddress:
         """Returns the address associated with the given account"""
-
         return self.account_address
 
     def auth_key(self) -> str:
@@ -88,7 +87,6 @@ class Account:
 
     def public_key(self) -> asymmetric_crypto.PublicKey:
         """Returns the public key for the associated account"""
-
         return self.private_key.public_key()
 
 
@@ -125,7 +123,7 @@ class RotationProofChallenge:
 
 class Test(unittest.TestCase):
     def test_load_and_store(self):
-        (file, path) = tempfile.mkstemp()
+        (_file, path) = tempfile.mkstemp()
         start = Account.generate()
         start.store(path)
         load = Account.load(path)

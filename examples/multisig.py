@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import subprocess
 import sys
 import time
 from typing import cast
+
+import aiofiles
 
 from examples.common import FAUCET_URL, NODE_URL, SUPRA_CORE_PATH
 from supra_sdk import ed25519
@@ -227,19 +228,23 @@ async def main(should_wait_input: bool):
         f"supra move tool compile "
         f"--save-metadata "
         f"--package-dir {packages_dir}genesis "
-        f"--named-addresses upgrade_and_govern={str(deedee.address())}"
+        f"--named-addresses upgrade_and_govern={deedee.address()!s}"
     )
 
     print(f"Running supra CLI command: {command}\n")
-    subprocess.run(command.split(), stdout=subprocess.PIPE)
+    process = await asyncio.create_subprocess_exec(
+        *command.split(),
+    )
+    await process.wait()
+    assert process.returncode == 0, "supra move tool compile failed"
 
     build_path = f"{packages_dir}genesis/build/UpgradeAndGovern/"
 
-    with open(f"{build_path}package-metadata.bcs", "rb") as f:
-        package_metadata = f.read()
+    async with aiofiles.open(f"{build_path}package-metadata.bcs", "rb") as f:
+        package_metadata = await f.read()
 
-    with open(f"{build_path}bytecode_modules/parameters.mv", "rb") as f:
-        parameters_module = f.read()
+    async with aiofiles.open(f"{build_path}bytecode_modules/parameters.mv", "rb") as f:
+        parameters_module = await f.read()
 
     modules_serializer = Serializer.sequence_serializer(Serializer.to_bytes)
 
@@ -292,21 +297,23 @@ async def main(should_wait_input: bool):
         f"supra move tool compile "
         f"--save-metadata "
         f"--package-dir {packages_dir}upgrade "
-        f"--named-addresses upgrade_and_govern={str(deedee.address())}"
+        f"--named-addresses upgrade_and_govern={deedee.address()!s}"
     )
 
     print(f"Running supra CLI command: {command}\n")
-    subprocess.run(command.split(), stdout=subprocess.PIPE)
+    process = await asyncio.create_subprocess_exec(*command.split())
+    await process.wait()
+    assert process.returncode == 0, "supra move tool compile failed"
     build_path = f"{packages_dir}upgrade/build/UpgradeAndGovern/"
 
-    with open(f"{build_path}package-metadata.bcs", "rb") as f:
-        package_metadata = f.read()
+    async with aiofiles.open(f"{build_path}package-metadata.bcs", "rb") as f:
+        package_metadata = await f.read()
 
-    with open(f"{build_path}bytecode_modules/parameters.mv", "rb") as f:
-        parameters_module = f.read()
+    async with aiofiles.open(f"{build_path}bytecode_modules/parameters.mv", "rb") as f:
+        parameters_module = await f.read()
 
-    with open(f"{build_path}bytecode_modules/transfer.mv", "rb") as f:
-        transfer_module = f.read()
+    async with aiofiles.open(f"{build_path}bytecode_modules/transfer.mv", "rb") as f:
+        transfer_module = await f.read()
 
     entry_function_payload = EntryFunction.natural(
         module="0x1::code",
@@ -357,8 +364,10 @@ async def main(should_wait_input: bool):
     wait()
 
     print("\n=== Invoking Move script ===")
-    with open(f"{build_path}bytecode_scripts/set_and_transfer.mv", "rb") as f:
-        script_code = f.read()
+    async with aiofiles.open(
+        f"{build_path}bytecode_scripts/set_and_transfer.mv", "rb"
+    ) as f:
+        script_code = await f.read()
     script_payload = Script(
         code=script_code,
         ty_args=[],

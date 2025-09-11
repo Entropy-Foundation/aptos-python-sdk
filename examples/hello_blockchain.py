@@ -2,8 +2,7 @@
 # Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-This example depends on the hello_blockchain.move module having already been published to the destination blockchain.
+"""This example depends on the hello_blockchain.move module having already been published to the destination blockchain.
 
 Steps:
     * `cd ~/aptos-core/aptos-move/move-examples/hello_blockchain`
@@ -13,7 +12,7 @@ Steps:
 
 import asyncio
 import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
@@ -31,22 +30,20 @@ from .common import FAUCET_URL, NODE_URL
 class HelloBlockchainClient(RestClient):
     async def get_message(
         self, contract_address: AccountAddress, account_address: AccountAddress
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Retrieve the resource message::MessageHolder::message"""
-
         resource_type = f"{contract_address}::message::MessageHolder"
         try:
             return await self.account_resource(account_address, resource_type)
         except ApiError as err:
             if "Information not available" not in str(err):
-                raise Exception(err)
+                raise err
             return None
 
     async def set_message(
         self, contract_address: AccountAddress, sender: Account, message: str
     ) -> str:
         """Potentially initialize and set the resource message::MessageHolder::message"""
-
         transaction_payload = TransactionPayload(
             EntryFunction.natural(
                 f"{contract_address}::message",

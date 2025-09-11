@@ -14,10 +14,10 @@ test-spec:
 	uv run behave
 
 fmt:
-	uv run ruff format supra_sdk examples features
+	uv run ruff format supra_sdk examples
 
 lint:
-	uv run ruff check supra_sdk examples features
+	uv run ruff check supra_sdk examples
 
 examples:
 	uv run python -m examples.automation

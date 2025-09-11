@@ -2,8 +2,7 @@
 # Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-This example depends on the MoonCoin.move module.
+"""This example depends on the MoonCoin.move module.
 
 Steps:
     * `cd ~/aptos-core/aptos-move/move-examples/moon_coin`
@@ -13,7 +12,8 @@ Steps:
 
 import asyncio
 import os
-import subprocess
+
+import aiofiles
 
 from examples.common import FAUCET_URL, NODE_URL, SUPRA_CORE_PATH
 from supra_sdk.account import Account
@@ -31,7 +31,6 @@ from supra_sdk.type_tag import StructTag, TypeTag
 class CoinClient(RestClient):
     async def register_coin(self, coin_address: AccountAddress, sender: Account) -> str:
         """Register the receiver account to receive transfers for the new coin."""
-
         payload = EntryFunction.natural(
             "0x1::managed_coin",
             "register",
@@ -47,7 +46,6 @@ class CoinClient(RestClient):
         self, minter: Account, receiver_address: AccountAddress, amount: int
     ) -> str:
         """Mints the newly created coin to a specified receiver address."""
-
         payload = EntryFunction.natural(
             "0x1::managed_coin",
             "mint",
@@ -90,22 +88,24 @@ async def main():
         f"supra move tool compile "
         f"--save-metadata "
         f"--package-dir {moon_coin_path} "
-        f"--named-addresses MoonCoin={str(alice.address())}"
+        f"--named-addresses MoonCoin={alice.address()!s}"
     )
     print(f"Running supra CLI command: {command}\n")
-    subprocess.run(command.split(), stdout=subprocess.PIPE)
+    process = await asyncio.create_subprocess_exec(*command.split())
+    await process.wait()
+    assert process.returncode == 0, "supra move tool compile failed"
 
     module_path = os.path.join(
         moon_coin_path, "build", "Examples", "bytecode_modules", "moon_coin.mv"
     )
-    with open(module_path, "rb") as f:
-        module = f.read()
+    async with aiofiles.open(module_path, "rb") as f:
+        module = await f.read()
 
     metadata_path = os.path.join(
         moon_coin_path, "build", "Examples", "package-metadata.bcs"
     )
-    with open(metadata_path, "rb") as f:
-        metadata = f.read()
+    async with aiofiles.open(metadata_path, "rb") as f:
+        metadata = await f.read()
 
     print("\nPublishing MoonCoin package.")
     await rest_client.publish_package(alice, metadata, [module])

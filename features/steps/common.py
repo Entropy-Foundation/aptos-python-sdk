@@ -72,8 +72,8 @@ def then_result_sequence(context: typing.Any, expected_type: str, expected_value
     )
 
 
-def parse_sequence(input_type: str, input_value: str) -> typing.List[typing.Any]:
-    vals: typing.List[typing.Any] = []
+def parse_sequence(input_type: str, input_value: str) -> list[typing.Any]:
+    vals: list[typing.Any] = []
 
     # Skip early if there are no values
     if len(input_value) == 0:

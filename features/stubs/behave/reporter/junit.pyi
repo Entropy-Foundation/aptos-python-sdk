@@ -2,14 +2,15 @@ from xml.etree import ElementTree
 
 from _typeshed import Incomplete
 from behave.formatter import ansi_escapes as ansi_escapes
-from behave.model import Scenario as Scenario
-from behave.model import ScenarioOutline as ScenarioOutline
-from behave.model import Step as Step
+from behave.model import (
+    Scenario as Scenario,
+    ScenarioOutline as ScenarioOutline,
+    Step as Step,
+)
 from behave.model_core import Status as Status
 from behave.model_describe import ModelDescriptor as ModelDescriptor
 from behave.reporter.base import Reporter as Reporter
-from behave.textutil import indent as indent
-from behave.textutil import make_indentation as make_indentation
+from behave.textutil import indent as indent, make_indentation as make_indentation
 from behave.userdata import UserDataNamespace as UserDataNamespace
 
 def CDATA(text: Incomplete | None = None): ...

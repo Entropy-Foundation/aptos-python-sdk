@@ -2,17 +2,14 @@
 # Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-This translates Supra transactions to and from BCS for signing and submitting to the REST API.
-"""
+"""This translates Supra transactions to and from BCS for signing and submitting to the REST API."""
 
 from __future__ import annotations
 
 import hashlib
 import unittest
-from typing import Any, Callable, List, Optional, Union, cast
-
-from typing_extensions import Protocol
+from collections.abc import Callable
+from typing import Any, Protocol, cast
 
 from supra_sdk import asymmetric_crypto, ed25519
 from supra_sdk.account_address import AccountAddress
@@ -162,10 +159,10 @@ class RawTransaction(Deserializable, RawTransactionInternal, Serializable):
 
 
 class MultiAgentRawTransaction(RawTransactionWithData):
-    secondary_signers: List[AccountAddress]
+    secondary_signers: list[AccountAddress]
 
     def __init__(
-        self, raw_transaction: RawTransaction, secondary_signers: List[AccountAddress]
+        self, raw_transaction: RawTransaction, secondary_signers: list[AccountAddress]
     ):
         self.raw_transaction = raw_transaction
         self.secondary_signers = secondary_signers
@@ -178,14 +175,14 @@ class MultiAgentRawTransaction(RawTransactionWithData):
 
 
 class FeePayerRawTransaction(RawTransactionWithData):
-    secondary_signers: List[AccountAddress]
-    fee_payer: Optional[AccountAddress]
+    secondary_signers: list[AccountAddress]
+    fee_payer: AccountAddress | None
 
     def __init__(
         self,
         raw_transaction: RawTransaction,
-        secondary_signers: List[AccountAddress],
-        fee_payer: Optional[AccountAddress],
+        secondary_signers: list[AccountAddress],
+        fee_payer: AccountAddress | None,
     ):
         self.raw_transaction = raw_transaction
         self.secondary_signers = secondary_signers
@@ -272,10 +269,10 @@ class ModuleBundle:
 
 class Script:
     code: bytes
-    ty_args: List[TypeTag]
-    args: List[ScriptArgument]
+    ty_args: list[TypeTag]
+    args: list[ScriptArgument]
 
-    def __init__(self, code: bytes, ty_args: List[TypeTag], args: List[ScriptArgument]):
+    def __init__(self, code: bytes, ty_args: list[TypeTag], args: list[ScriptArgument]):
         self.code = code
         self.ty_args = ty_args
         self.args = args
@@ -386,11 +383,11 @@ class ScriptArgument:
 class EntryFunction:
     module: ModuleId
     function: str
-    ty_args: List[TypeTag]
-    args: List[bytes]
+    ty_args: list[TypeTag]
+    args: list[bytes]
 
     def __init__(
-        self, module: ModuleId, function: str, ty_args: List[TypeTag], args: List[bytes]
+        self, module: ModuleId, function: str, ty_args: list[TypeTag], args: list[bytes]
     ):
         self.module = module
         self.function = function
@@ -415,8 +412,8 @@ class EntryFunction:
     def natural(
         module: str,
         function: str,
-        ty_args: List[TypeTag],
-        args: List[TransactionArgument],
+        ty_args: list[TypeTag],
+        args: list[TransactionArgument],
     ) -> EntryFunction:
         module_id = ModuleId.from_str(module)
 
@@ -442,12 +439,12 @@ class EntryFunction:
 
 class Multisig:
     multisig_address: AccountAddress
-    transaction_payload: Optional[MultisigTransactionPayload]
+    transaction_payload: MultisigTransactionPayload | None
 
     def __init__(
         self,
         multisig_address: AccountAddress,
-        transaction_payload: Optional[MultisigTransactionPayload] = None,
+        transaction_payload: MultisigTransactionPayload | None = None,
     ):
         self.multisig_address = multisig_address
         self.transaction_payload = transaction_payload
@@ -539,7 +536,7 @@ class AutomationRegistrationParamsV1:
         gas_price_cap: int,
         automation_fee_cap_for_epoch: int,
         expiration_timestamp_secs: int,
-        aux_data: List[bytes],
+        aux_data: list[bytes],
     ):
         self.automated_function = automated_function
         self.max_gas_amount = max_gas_amount
@@ -631,7 +628,7 @@ class SignedTransaction:
     def __init__(
         self,
         transaction: RawTransaction,
-        authenticator: Union[AccountAuthenticator, Authenticator],
+        authenticator: AccountAuthenticator | Authenticator,
     ):
         self.transaction = transaction
         if isinstance(authenticator, AccountAuthenticator):

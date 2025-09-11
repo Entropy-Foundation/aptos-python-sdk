@@ -2,9 +2,9 @@ import typing
 
 from _typeshed import Incomplete
 
-__all__ = ["given", "when", "then", "step", "Given", "When", "Then", "Step"]
+__all__ = ["Given", "Step", "Then", "When", "given", "step", "then", "when"]
 
-from typing import Callable, List
+from collections.abc import Callable
 
 class AmbiguousStep(ValueError): ...
 
@@ -27,8 +27,8 @@ class StepRegistry:
 #   step
 #   then
 #   when
-def given(any: typing.Any) -> Callable[[typing.Any], List[str]]: ...
-def then(any: typing.Any) -> Callable[[typing.Any], List[str]]: ...
-def when(any: typing.Any) -> Callable[[typing.Any], List[str]]: ...
+def given(any: typing.Any) -> Callable[[typing.Any], list[str]]: ...
+def then(any: typing.Any) -> Callable[[typing.Any], list[str]]: ...
+def when(any: typing.Any) -> Callable[[typing.Any], list[str]]: ...
 
 registry = StepRegistry()

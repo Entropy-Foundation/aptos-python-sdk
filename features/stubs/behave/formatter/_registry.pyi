@@ -1,9 +1,10 @@
-from behave.formatter.base import Formatter as Formatter
-from behave.formatter.base import StreamOpener as StreamOpener
-from behave.importer import LazyDict as LazyDict
-from behave.importer import LazyObject as LazyObject
-from behave.importer import load_module as load_module
-from behave.importer import parse_scoped_name as parse_scoped_name
+from behave.formatter.base import Formatter as Formatter, StreamOpener as StreamOpener
+from behave.importer import (
+    LazyDict as LazyDict,
+    LazyObject as LazyObject,
+    load_module as load_module,
+    parse_scoped_name as parse_scoped_name,
+)
 
 def format_iter(): ...
 def format_items(resolved: bool = False): ...

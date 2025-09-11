@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import typing
 import unittest
-from typing import List, Tuple
 
 from supra_sdk.account_address import AccountAddress
 from supra_sdk.bcs import Deserializable, Deserializer, Serializable, Serializer
@@ -64,9 +63,7 @@ class TypeTag(Deserializable, Serializable):
             return TypeTag(U256Tag.deserialize(deserializer))
         elif variant == TypeTag.ACCOUNT_ADDRESS:
             return TypeTag(AccountAddressTag.deserialize(deserializer))
-        elif variant == TypeTag.SIGNER:
-            raise NotImplementedError
-        elif variant == TypeTag.VECTOR:
+        elif variant == TypeTag.SIGNER or variant == TypeTag.VECTOR:
             raise NotImplementedError
         elif variant == TypeTag.STRUCT:
             return TypeTag(StructTag.deserialize(deserializer))
@@ -281,7 +278,7 @@ class StructTag(Deserializable, Serializable):
     address: AccountAddress
     module: str
     name: str
-    type_args: List[TypeTag]
+    type_args: list[TypeTag]
 
     def __init__(self, address, module, name, type_args):
         self.address = address
@@ -313,10 +310,10 @@ class StructTag(Deserializable, Serializable):
         return StructTag._from_str_internal(type_tag, 0)[0][0].value
 
     @staticmethod
-    def _from_str_internal(type_tag: str, index: int) -> Tuple[List[TypeTag], int]:
+    def _from_str_internal(type_tag: str, index: int) -> tuple[list[TypeTag], int]:
         name = ""
         tags = []
-        inner_tags: List[TypeTag] = []
+        inner_tags: list[TypeTag] = []
 
         while index < len(type_tag):
             letter = type_tag[index]

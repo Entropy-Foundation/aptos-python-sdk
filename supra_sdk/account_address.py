@@ -23,9 +23,7 @@ class AuthKeyScheme:
 
 
 class ParseAddressError(Exception):
-    """
-    There was an error parsing an address.
-    """
+    """There was an error parsing an address."""
 
 
 class AccountAddress:
@@ -44,8 +42,7 @@ class AccountAddress:
         return self.address == other.address
 
     def __str__(self):
-        """
-        Represent an account address in a way that is compliant with the v1 address
+        """Represent an account address in a way that is compliant with the v1 address
         standard. The standard is defined as part of AIP-40, read more here:
         https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md
 
@@ -70,8 +67,7 @@ class AccountAddress:
         return self.__str__()
 
     def is_special(self):
-        """
-        Returns whether the address is a "special" address. Addresses are considered
+        """Returns whether the address is a "special" address. Addresses are considered
         special if the first 63 characters of the hex string are zero. In other words,
         an address is special if the first 31 bytes are zero and the last byte is
         smaller than `0b10000` (16). In other words, special is defined as an address
@@ -85,8 +81,7 @@ class AccountAddress:
 
     @staticmethod
     def from_str(address: str) -> AccountAddress:
-        """
-        NOTE: This function has strict parsing behavior. For relaxed behavior, please use
+        """NOTE: This function has strict parsing behavior. For relaxed behavior, please use
         `from_string_relaxed` function.
 
         Creates an instance of AccountAddress from a hex string.
@@ -107,11 +102,14 @@ class AccountAddress:
         Learn more about the different address formats by reading AIP-40:
         https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md.
 
-        Parameters:
+        Parameters
+        ----------
         - address (str): A hex string representing an account address.
 
-        Returns:
+        Returns
+        -------
         - AccountAddress: An instance of AccountAddress.
+
         """
         # Assert the string starts with 0x.
         if not address.startswith("0x"):
@@ -146,8 +144,7 @@ class AccountAddress:
 
     @staticmethod
     def from_str_relaxed(address: str) -> AccountAddress:
-        """
-        NOTE: This function has relaxed parsing behavior. For strict behavior, please use
+        """NOTE: This function has relaxed parsing behavior. For strict behavior, please use
         the `from_string` function. Where possible, use `from_string` rather than this
         function. `from_string_relaxed` is only provided for backwards compatibility.
 
@@ -166,11 +163,14 @@ class AccountAddress:
         Learn more about the different address formats by reading AIP-40:
         https://github.com/aptos-foundation/AIPs/blob/main/aips/aip-40.md.
 
-        Parameters:
+        Parameters
+        ----------
         - address (str): A hex string representing an account address.
 
-        Returns:
+        Returns
+        -------
         - AccountAddress: An instance of AccountAddress.
+
         """
         addr = address
 
@@ -273,51 +273,51 @@ Tests
 
 @dataclass(init=True, frozen=True)
 class TestAddresses:
-    shortWith0x: str
-    shortWithout0x: str
-    longWith0x: str
-    longWithout0x: str
+    short_with_0x: str
+    short_without_0x: str
+    long_with_0x: str
+    long_without_0x: str
     bytes: bytes
 
 
 ADDRESS_ZERO = TestAddresses(
-    shortWith0x="0x0",
-    shortWithout0x="0",
-    longWith0x="0x0000000000000000000000000000000000000000000000000000000000000000",
-    longWithout0x="0000000000000000000000000000000000000000000000000000000000000000",
+    short_with_0x="0x0",
+    short_without_0x="0",
+    long_with_0x="0x0000000000000000000000000000000000000000000000000000000000000000",
+    long_without_0x="0000000000000000000000000000000000000000000000000000000000000000",
     bytes=bytes([0] * 32),
 )
 
 ADDRESS_F = TestAddresses(
-    shortWith0x="0xf",
-    shortWithout0x="f",
-    longWith0x="0x000000000000000000000000000000000000000000000000000000000000000f",
-    longWithout0x="000000000000000000000000000000000000000000000000000000000000000f",
+    short_with_0x="0xf",
+    short_without_0x="f",
+    long_with_0x="0x000000000000000000000000000000000000000000000000000000000000000f",
+    long_without_0x="000000000000000000000000000000000000000000000000000000000000000f",
     bytes=bytes([0] * 31 + [15]),
 )
 
 ADDRESS_F_PADDED_SHORT_FORM = TestAddresses(
-    shortWith0x="0x0f",
-    shortWithout0x="0f",
+    short_with_0x="0x0f",
+    short_without_0x="0f",
     # The rest of these below are the same as for ADDRESS_F.
-    longWith0x="0x000000000000000000000000000000000000000000000000000000000000000f",
-    longWithout0x="000000000000000000000000000000000000000000000000000000000000000f",
+    long_with_0x="0x000000000000000000000000000000000000000000000000000000000000000f",
+    long_without_0x="000000000000000000000000000000000000000000000000000000000000000f",
     bytes=bytes([0] * 31 + [15]),
 )
 
 ADDRESS_TEN = TestAddresses(
-    shortWith0x="0x10",
-    shortWithout0x="10",
-    longWith0x="0x0000000000000000000000000000000000000000000000000000000000000010",
-    longWithout0x="0000000000000000000000000000000000000000000000000000000000000010",
+    short_with_0x="0x10",
+    short_without_0x="10",
+    long_with_0x="0x0000000000000000000000000000000000000000000000000000000000000010",
+    long_without_0x="0000000000000000000000000000000000000000000000000000000000000010",
     bytes=bytes([0] * 31 + [16]),
 )
 
 ADDRESS_OTHER = TestAddresses(
-    shortWith0x="0xca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
-    shortWithout0x="ca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
-    longWith0x="0xca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
-    longWithout0x="ca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
+    short_with_0x="0xca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
+    short_without_0x="ca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
+    long_with_0x="0xca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
+    long_without_0x="ca843279e3427144cead5e4d5999a3d0ca843279e3427144cead5e4d5999a3d0",
     bytes=bytes(
         [
             202,
@@ -508,146 +508,151 @@ class Test(unittest.TestCase):
     def test_from_str_relaxed(self):
         # Demonstrate that all formats are accepted for 0x0.
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.longWith0x)),
-            ADDRESS_ZERO.shortWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.long_with_0x)),
+            ADDRESS_ZERO.short_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.longWithout0x)),
-            ADDRESS_ZERO.shortWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.long_without_0x)),
+            ADDRESS_ZERO.short_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.shortWith0x)),
-            ADDRESS_ZERO.shortWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.short_with_0x)),
+            ADDRESS_ZERO.short_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.shortWithout0x)),
-            ADDRESS_ZERO.shortWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_ZERO.short_without_0x)),
+            ADDRESS_ZERO.short_with_0x,
         )
 
         # Demonstrate that all formats are accepted for 0xf.
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_F.longWith0x)),
-            ADDRESS_F.shortWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_F.long_with_0x)),
+            ADDRESS_F.short_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_F.longWithout0x)),
-            ADDRESS_F.shortWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_F.long_without_0x)),
+            ADDRESS_F.short_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_F.shortWith0x)),
-            ADDRESS_F.shortWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_F.short_with_0x)),
+            ADDRESS_F.short_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_F.shortWithout0x)),
-            ADDRESS_F.shortWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_F.short_without_0x)),
+            ADDRESS_F.short_with_0x,
         )
 
         # Demonstrate that padding zeroes are allowed for 0x0f.
         self.assertEqual(
             str(
-                AccountAddress.from_str_relaxed(ADDRESS_F_PADDED_SHORT_FORM.shortWith0x)
+                AccountAddress.from_str_relaxed(
+                    ADDRESS_F_PADDED_SHORT_FORM.short_with_0x
+                )
             ),
-            ADDRESS_F.shortWith0x,
+            ADDRESS_F.short_with_0x,
         )
         self.assertEqual(
             str(
                 AccountAddress.from_str_relaxed(
-                    ADDRESS_F_PADDED_SHORT_FORM.shortWithout0x
+                    ADDRESS_F_PADDED_SHORT_FORM.short_without_0x
                 )
             ),
-            ADDRESS_F.shortWith0x,
+            ADDRESS_F.short_with_0x,
         )
 
         # Demonstrate that all formats are accepted for 0x10.
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.longWith0x)),
-            ADDRESS_TEN.longWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.long_with_0x)),
+            ADDRESS_TEN.long_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.longWithout0x)),
-            ADDRESS_TEN.longWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.long_without_0x)),
+            ADDRESS_TEN.long_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.shortWith0x)),
-            ADDRESS_TEN.longWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.short_with_0x)),
+            ADDRESS_TEN.long_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.shortWithout0x)),
-            ADDRESS_TEN.longWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_TEN.short_without_0x)),
+            ADDRESS_TEN.long_with_0x,
         )
 
         # Demonstrate that all formats are accepted for other addresses.
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_OTHER.longWith0x)),
-            ADDRESS_OTHER.longWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_OTHER.long_with_0x)),
+            ADDRESS_OTHER.long_with_0x,
         )
         self.assertEqual(
-            str(AccountAddress.from_str_relaxed(ADDRESS_OTHER.longWithout0x)),
-            ADDRESS_OTHER.longWith0x,
+            str(AccountAddress.from_str_relaxed(ADDRESS_OTHER.long_without_0x)),
+            ADDRESS_OTHER.long_with_0x,
         )
 
     def test_from_str(self):
         # Demonstrate that only LONG and SHORT are accepted for 0x0.
         self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_ZERO.longWith0x)),
-            ADDRESS_ZERO.shortWith0x,
+            str(AccountAddress.from_str(ADDRESS_ZERO.long_with_0x)),
+            ADDRESS_ZERO.short_with_0x,
         )
         self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_ZERO.longWithout0x
+            RuntimeError, AccountAddress.from_str, ADDRESS_ZERO.long_without_0x
         )
         self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_ZERO.shortWith0x)),
-            ADDRESS_ZERO.shortWith0x,
+            str(AccountAddress.from_str(ADDRESS_ZERO.short_with_0x)),
+            ADDRESS_ZERO.short_with_0x,
         )
         self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_ZERO.shortWithout0x
+            RuntimeError, AccountAddress.from_str, ADDRESS_ZERO.short_without_0x
         )
 
         # Demonstrate that only LONG and SHORT are accepted for 0xf.
         self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_F.longWith0x)), ADDRESS_F.shortWith0x
+            str(AccountAddress.from_str(ADDRESS_F.long_with_0x)),
+            ADDRESS_F.short_with_0x,
         )
         self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_F.longWithout0x
+            RuntimeError, AccountAddress.from_str, ADDRESS_F.long_without_0x
         )
         self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_F.shortWith0x)), ADDRESS_F.shortWith0x
+            str(AccountAddress.from_str(ADDRESS_F.short_with_0x)),
+            ADDRESS_F.short_with_0x,
         )
         self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_F.shortWithout0x
+            RuntimeError, AccountAddress.from_str, ADDRESS_F.short_without_0x
         )
 
         # Demonstrate that padding zeroes are not allowed for 0x0f.
         self.assertRaises(
             RuntimeError,
             AccountAddress.from_str,
-            ADDRESS_F_PADDED_SHORT_FORM.shortWith0x,
+            ADDRESS_F_PADDED_SHORT_FORM.short_with_0x,
         )
         self.assertRaises(
             RuntimeError,
             AccountAddress.from_str,
-            ADDRESS_F_PADDED_SHORT_FORM.shortWithout0x,
+            ADDRESS_F_PADDED_SHORT_FORM.short_without_0x,
         )
 
         # Demonstrate that only LONG format is accepted for 0x10.
         self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_TEN.longWith0x)), ADDRESS_TEN.longWith0x
+            str(AccountAddress.from_str(ADDRESS_TEN.long_with_0x)),
+            ADDRESS_TEN.long_with_0x,
         )
         self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_TEN.longWithout0x
+            RuntimeError, AccountAddress.from_str, ADDRESS_TEN.long_without_0x
         )
         self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_TEN.shortWith0x
+            RuntimeError, AccountAddress.from_str, ADDRESS_TEN.short_with_0x
         )
         self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_TEN.shortWithout0x
+            RuntimeError, AccountAddress.from_str, ADDRESS_TEN.short_without_0x
         )
 
         # Demonstrate that only LONG format is accepted for other addresses.
         self.assertEqual(
-            str(AccountAddress.from_str(ADDRESS_OTHER.longWith0x)),
-            ADDRESS_OTHER.longWith0x,
+            str(AccountAddress.from_str(ADDRESS_OTHER.long_with_0x)),
+            ADDRESS_OTHER.long_with_0x,
         )
         self.assertRaises(
-            RuntimeError, AccountAddress.from_str, ADDRESS_OTHER.longWithout0x
+            RuntimeError, AccountAddress.from_str, ADDRESS_OTHER.long_without_0x
         )

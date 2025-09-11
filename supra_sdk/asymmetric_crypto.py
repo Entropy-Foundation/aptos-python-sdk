@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing_extensions import Protocol
+from typing import Protocol
 
 from supra_sdk.bcs import Deserializable, Serializable
 
@@ -19,8 +19,7 @@ class PrivateKey(Deserializable, Serializable, Protocol):
 
 class PublicKey(Deserializable, Serializable, Protocol):
     def to_crypto_bytes(self) -> bytes:
-        """
-        A long time ago, someone decided that we should have both bcs and a special representation
+        """A long time ago, someone decided that we should have both bcs and a special representation
         for MultiEd25519, so we use this to let keys self-define a special encoding.
         """
         ...

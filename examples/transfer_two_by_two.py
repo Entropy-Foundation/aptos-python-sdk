@@ -5,6 +5,8 @@
 import asyncio
 import os
 
+import aiofiles
+
 from examples.common import FAUCET_URL, NODE_URL
 from supra_sdk.account import Account
 from supra_sdk.async_client import FaucetClient, RestClient
@@ -43,8 +45,8 @@ async def main():
 
     path = os.path.dirname(__file__)
     filepath = os.path.join(path, "two_by_two_transfer.mv")
-    with open(filepath, mode="rb") as file:
-        code = file.read()
+    async with aiofiles.open(filepath, mode="rb") as file:
+        code = await file.read()
 
     script_arguments = [
         ScriptArgument(ScriptArgument.U64, 100),
