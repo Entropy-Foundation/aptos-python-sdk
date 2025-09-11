@@ -1,5 +1,4 @@
 # Copyright © Supra
-# Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
 test-unit:
@@ -33,4 +32,12 @@ examples:
 	uv run python -m examples.transfer_two_by_two
 	uv run python -m examples.your_coin
 
-.PHONY: test-unit test-spec test-all test-coverage fmt lint examples
+generate-api-docs:
+	uv run sphinx-apidoc -o docs supra_sdk
+	
+build-docs:
+	uv run sphinx-build -b html docs docs/_build
+
+docs-all: generate-api-docs build-docs
+
+.PHONY: test-unit test-spec test-all test-coverage fmt lint examples generate-api-docs build-docs docs-all
