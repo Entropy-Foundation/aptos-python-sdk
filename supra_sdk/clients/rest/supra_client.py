@@ -582,8 +582,8 @@ class SupraClient(
             TransactionArgument(amount, Serializer.u64),
         ]
         transaction_payload = EntryFunction.natural(
-            "0x1::coin",
-            "transfer",
+            "0x1::supra_account",
+            "transfer_coins",
             [TypeTag(StructTag.from_str(coin_type))],
             transaction_arguments,
         )

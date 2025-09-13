@@ -229,7 +229,12 @@ class TestSupraClientEndpointsIntegration(unittest.IsolatedAsyncioTestCase):
     async def test_estimate_gas_price(self):
         self.assertListEqual(
             list((await self.supra_client.estimate_gas_price()).keys()),
-            ["mean_gas_price", "max_gas_price", "median_gas_price"],
+            [
+                "mean_gas_price",
+                "max_gas_price",
+                "median_gas_price",
+                "min_configured_gas_price",
+            ],
         )
 
     async def test_transaction_parameters(self):
@@ -431,7 +436,7 @@ class TestSupraAutomationTransactions(unittest.IsolatedAsyncioTestCase):
             automated_function,
             9,
             100,
-            4 * (10**8),
+            1 * (10**8),
             int(time.time()) + 7200,
             [],
         )
