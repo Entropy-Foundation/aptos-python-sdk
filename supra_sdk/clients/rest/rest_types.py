@@ -191,6 +191,18 @@ class EventsPagination:
 
 
 class TransactionType(str, Enum):
+    """Enumeration of transaction types.
+
+    This enum represents the type of a transaction and it will be used when querying transactions
+    with block info via `BLOCK_BY_HEIGHT_ENDPOINT`.
+
+    Attributes:
+        AUTO (str): Represents transactions associated with the Supra Automation.
+        USER (str): Represents a user transaction type.
+        META (str): Represents a metadata transaction type.
+
+    """
+
     AUTO = "auto"
     USER = "user"
     META = "meta"

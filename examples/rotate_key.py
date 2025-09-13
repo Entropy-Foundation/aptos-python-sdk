@@ -7,12 +7,12 @@ from typing import cast
 
 import supra_sdk.asymmetric_crypto as asymmetric_crypto
 import supra_sdk.ed25519 as ed25519
-from examples.common import FAUCET_URL, NODE_URL
+from examples.common import RPC_NODE_URL
 from supra_sdk.account import Account, RotationProofChallenge
 from supra_sdk.account_address import AccountAddress
-from supra_sdk.async_client import FaucetClient, RestClient
 from supra_sdk.authenticator import Authenticator
 from supra_sdk.bcs import Serializer
+from supra_sdk.clients.rest import SupraClient
 from supra_sdk.transactions import (
     EntryFunction,
     TransactionArgument,
@@ -37,11 +37,11 @@ def format_account_info(account: Account) -> str:
 
 
 async def rotate_auth_key_ed25519_payload(
-    rest_client: RestClient, from_account: Account, to_private_key: ed25519.PrivateKey
+    supra_client: SupraClient, from_account: Account, to_private_key: ed25519.PrivateKey
 ) -> TransactionPayload:
     to_account = Account.load_key(to_private_key.hex())
     rotation_proof_challenge = RotationProofChallenge(
-        sequence_number=await rest_client.account_sequence_number(
+        sequence_number=await supra_client.account_sequence_number(
             from_account.address()
         ),
         originator=from_account.address(),
@@ -62,7 +62,7 @@ async def rotate_auth_key_ed25519_payload(
 
 
 async def rotate_auth_key_multi_ed25519_payload(
-    rest_client: RestClient,
+    supra_client: SupraClient,
     from_account: Account,
     private_keys: list[ed25519.PrivateKey],
 ) -> TransactionPayload:
@@ -73,7 +73,7 @@ async def rotate_auth_key_multi_ed25519_payload(
     public_key = ed25519.MultiPublicKey(cast(list[ed25519.PublicKey], public_keys), 1)
 
     rotation_proof_challenge = RotationProofChallenge(
-        sequence_number=await rest_client.account_sequence_number(
+        sequence_number=await supra_client.account_sequence_number(
             from_account.address()
         ),
         originator=from_account.address(),
@@ -127,15 +127,14 @@ def rotation_payload(
 
 async def main():
     # Initialize the clients used to interact with the blockchain
-    rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    supra_client = SupraClient(RPC_NODE_URL)
 
     # Generate random accounts Alice and Bob
     alice = Account.generate()
     bob = Account.generate()
 
     # Fund Alice's account, since we don't use Bob's
-    await faucet_client.faucet(alice.address())
+    await supra_client.faucet(alice.address())
 
     # Display formatted account info
     print(
@@ -156,18 +155,18 @@ async def main():
 
     # Create the payload for rotating Alice's private key to Bob's private key
     transaction_payload = await rotate_auth_key_ed25519_payload(
-        rest_client, alice, bob.private_key
+        supra_client, alice, bob.private_key
     )
     # Have Alice sign the transaction with the payload
-    signed_transaction = await rest_client.create_signed_transaction(
+    signed_transaction = await supra_client.create_signed_transaction(
         alice, transaction_payload
     )
-    tx_hash = await rest_client.submit_transaction(signed_transaction)
+    tx_hash = await supra_client.submit_transaction(signed_transaction)
     print(f"Rotated auth key, tx_hash: {tx_hash}")
 
     # Check the authentication key for Alice's address on-chain
-    alice_new_account_info = await rest_client.account(alice.address())
-    # Ensure that Alice's authentication key matches bob's
+    alice_new_account_info = await supra_client.account(alice.address())
+    # Ensure that Alice's authentication key matches Bob's
     assert alice_new_account_info["authentication_key"] == bob.auth_key(), (
         "Authentication key doesn't match Bob's"
     )
@@ -182,18 +181,17 @@ async def main():
 
     print("\n...rotating...\n")
     payload = await rotate_auth_key_multi_ed25519_payload(
-        rest_client, alice, [bob.private_key, original_alice_key]
+        supra_client, alice, [bob.private_key, original_alice_key]
     )
-    signed_transaction = await rest_client.create_signed_transaction(alice, payload)
-    tx_hash = await rest_client.submit_transaction(signed_transaction)
+    signed_transaction = await supra_client.create_signed_transaction(alice, payload)
+    tx_hash = await supra_client.submit_transaction(signed_transaction)
     print(f"Rotated to multi-ed25519 auth key, tx_hash: {tx_hash}")
 
-    alice_new_account_info = await rest_client.account(alice.address())
+    alice_new_account_info = await supra_client.account(alice.address())
     auth_key = alice_new_account_info["authentication_key"]
     print(f"Rotation to MultiPublicKey complete, new authkey: {auth_key}")
 
-    await rest_client.close()
-    await faucet_client.close()
+    await supra_client.close()
 
 
 if __name__ == "__main__":

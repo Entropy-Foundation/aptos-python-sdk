@@ -34,6 +34,8 @@ select = [
     # pycodestyle
     "E",
     "W",
+    # # pydocstyle
+    # "D",
     # flake8-bugbear
     "B",
     # flake8-comprehensions
@@ -48,8 +50,6 @@ select = [
     "ARG",
     # pep8-naming
     "N",
-    # pydocstyle
-    # "D",
     # isort
     "I",
     # pyupgrade
@@ -60,12 +60,13 @@ select = [
 ignore = ["E203", "E501", "E701", "B017", "RUF012"]
 exclude = ["__init__.py"]
 
-[tool.ruff.format]
-docstring-code-format = true
 
 [tool.ruff.lint.isort]
 known-first-party = ["supra_sdk"]
 combine-as-imports = true
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.uv.build-backend]
 module-name = "supra_sdk"

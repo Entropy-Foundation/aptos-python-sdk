@@ -8,8 +8,8 @@ from typing import Any
 
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
-from supra_sdk.api_types import Pagination
-from supra_sdk.async_client import RestClient
+from supra_sdk.clients.rest.rest_types import Pagination
+from supra_sdk.clients.rest import SupraClient
 from supra_sdk.bcs import Deserializer, Serializer
 from supra_sdk.transactions import (
     EntryFunction,
@@ -55,7 +55,10 @@ class Collection:
         self.uri = uri
 
     def __str__(self) -> str:
-        return f"AccountAddress[creator: {self.creator}, description: {self.description}, name: {self.name}, ur: {self.uri}]"
+        return (
+            f"AccountAddress[creator: {self.creator}, description: {self.description}, name: {self.name}, "
+            f"uri: {self.uri}]"
+        )
 
     @staticmethod
     def parse(resource: dict[str, Any]) -> Collection:
@@ -80,7 +83,10 @@ class Royalty:
         self.payee_address = payee_address
 
     def __str__(self) -> str:
-        return f"Royalty[numerator: {self.numerator}, denominator: {self.denominator}, payee_address: {self.payee_address}]"
+        return (
+            f"Royalty[numerator: {self.numerator}, denominator: {self.denominator}, "
+            f"payee_address: {self.payee_address}]"
+        )
 
     @staticmethod
     def parse(resource: dict[str, Any]) -> Royalty:
@@ -115,7 +121,10 @@ class Token:
         self.uri = uri
 
     def __str__(self) -> str:
-        return f"Token[collection: {self.collection}, index: {self.index}, description: {self.description}, name: {self.name}, uri: {self.uri}]"
+        return (
+            f"Token[collection: {self.collection}, index: {self.index}, description: {self.description}, "
+            f"name: {self.name}, uri: {self.uri}]"
+        )
 
     @staticmethod
     def parse(resource: dict[str, Any]):
@@ -329,11 +338,11 @@ class ReadObject:
 class SupraTokenClient:
     """A wrapper around reading and mutating Digital Assets also known as Token Objects"""
 
-    client: RestClient
+    client: SupraClient
 
     PAGINATION_COUNT: int = 100
 
-    def __init__(self, client: RestClient):
+    def __init__(self, client: SupraClient):
         self.client = client
 
     async def read_object(self, address: AccountAddress) -> ReadObject:

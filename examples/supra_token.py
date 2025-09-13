@@ -4,17 +4,16 @@
 
 import asyncio
 
-from examples.common import FAUCET_URL, NODE_URL
+from examples.common import RPC_NODE_URL
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
-from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.clients.rest import SupraClient
 from supra_sdk.supra_token_client import Object, Property, PropertyMap, SupraTokenClient
 
 
 async def main():
-    rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
-    token_client = SupraTokenClient(rest_client)
+    supra_client = SupraClient(RPC_NODE_URL)
+    token_client = SupraTokenClient(supra_client)
 
     alice = Account.generate()
     bob = Account.generate()
@@ -25,8 +24,8 @@ async def main():
     print(f"Alice account address: {alice.address()}")
     print(f"Bob account address: {bob.address()}")
 
-    await faucet_client.faucet(alice.address())
-    await faucet_client.faucet(bob.address())
+    await supra_client.faucet(alice.address())
+    await supra_client.faucet(bob.address())
 
     print("\n=== Creating Collection and Token ===")
 
@@ -97,13 +96,13 @@ async def main():
     print(f"Token: {token_addr}\n")
     print(f"Owner: {token_data.resources[Object].owner}")
     print("    ...transferring...    ")
-    await rest_client.transfer_object(alice, token_addr, bob.address())
+    await supra_client.transfer_object(alice, token_addr, bob.address())
 
     token_data = await token_client.read_object(token_addr)
     print(f"Owner: {token_data.resources[Object].owner}\n")
 
-    await rest_client.close()
-    await faucet_client.close()
+    await supra_client.close()
+    await supra_client.close()
 
 
 if __name__ == "__main__":

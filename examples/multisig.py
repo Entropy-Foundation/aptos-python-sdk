@@ -9,13 +9,13 @@ from typing import cast
 
 import aiofiles
 
-from examples.common import FAUCET_URL, NODE_URL, SUPRA_CORE_PATH
+from examples.common import RPC_NODE_URL, SUPRA_CORE_PATH
 from supra_sdk import ed25519
 from supra_sdk.account import Account, RotationProofChallenge
 from supra_sdk.account_address import AccountAddress
-from supra_sdk.async_client import FaucetClient, RestClient
 from supra_sdk.authenticator import Authenticator, MultiEd25519Authenticator
 from supra_sdk.bcs import Serializer
+from supra_sdk.clients.rest import SupraClient
 from supra_sdk.ed25519 import MultiPublicKey, MultiSignature
 from supra_sdk.transactions import (
     EntryFunction,
@@ -41,9 +41,7 @@ async def main(should_wait_input: bool):
     global should_wait
     should_wait = should_wait_input
 
-    rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
-
+    supra_client = SupraClient(RPC_NODE_URL)
     alice = Account.generate()
     bob = Account.generate()
     chad = Account.generate()
@@ -80,15 +78,15 @@ async def main(should_wait_input: bool):
     wait()
 
     print("\n=== Funding accounts ===")
-    await faucet_client.faucet(alice.address())
-    await faucet_client.faucet(bob.address())
-    await faucet_client.faucet(chad.address())
-    await faucet_client.faucet(multisig_address)
+    await supra_client.faucet(alice.address())
+    await supra_client.faucet(bob.address())
+    await supra_client.faucet(chad.address())
+    await supra_client.faucet(multisig_address)
 
-    alice_balance = await rest_client.account_supra_balance(alice.address())
-    bob_balance = await rest_client.account_supra_balance(bob.address())
-    chad_balance = await rest_client.account_supra_balance(chad.address())
-    multisig_balance = await rest_client.account_supra_balance(multisig_address)
+    alice_balance = await supra_client.account_supra_balance(alice.address())
+    bob_balance = await supra_client.account_supra_balance(bob.address())
+    chad_balance = await supra_client.account_supra_balance(chad.address())
+    multisig_balance = await supra_client.account_supra_balance(multisig_address)
 
     print(f"Alice's balance:  {alice_balance}")
     print(f"Bob's balance:    {bob_balance}")
@@ -106,15 +104,15 @@ async def main(should_wait_input: bool):
         ],
     )
 
-    chain_id = await rest_client.chain_id()
+    chain_id = await supra_client.chain_id()
     raw_transaction = RawTransaction(
         sender=multisig_address,
         sequence_number=0,
         payload=TransactionPayload(entry_function),
-        max_gas_amount=rest_client.client_config.max_gas_amount,
-        gas_unit_price=rest_client.client_config.gas_unit_price,
+        max_gas_amount=supra_client.transaction_config.max_gas_amount,
+        gas_unit_price=supra_client.transaction_config.gas_unit_price,
         expiration_timestamps_secs=(
-            int(time.time()) + rest_client.client_config.expiration_ttl
+            int(time.time()) + supra_client.transaction_config.expiration_ttl
         ),
         chain_id=chain_id,
     )
@@ -145,15 +143,15 @@ async def main(should_wait_input: bool):
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
     print("\n=== Submitting transfer transaction ===")
 
-    tx_hash = await rest_client.submit_transaction(signed_transaction)
+    tx_hash = await supra_client.submit_transaction(signed_transaction)
     print(f"Transaction hash: {tx_hash}")
     wait()
 
     print("\n=== New account balances===")
-    alice_balance = await rest_client.account_supra_balance(alice.address())
-    bob_balance = await rest_client.account_supra_balance(bob.address())
-    chad_balance = await rest_client.account_supra_balance(chad.address())
-    multisig_balance = await rest_client.account_supra_balance(multisig_address)
+    alice_balance = await supra_client.account_supra_balance(alice.address())
+    bob_balance = await supra_client.account_supra_balance(bob.address())
+    chad_balance = await supra_client.account_supra_balance(chad.address())
+    multisig_balance = await supra_client.account_supra_balance(multisig_address)
     print(f"Alice's balance:  {alice_balance}")
     print(f"Bob's balance:    {bob_balance}")
     print(f"Chad's balance:   {chad_balance}")
@@ -167,8 +165,8 @@ async def main(should_wait_input: bool):
     print(f"Deedee's address:    {deedee.address()}")
     print(f"Deedee's public key: {deedee.public_key()}")
 
-    await faucet_client.faucet(deedee.address())
-    deedee_balance = await rest_client.account_supra_balance(deedee.address())
+    await supra_client.faucet(deedee.address())
+    deedee_balance = await supra_client.account_supra_balance(deedee.address())
     print(f"Deedee's balance:    {deedee_balance}")  # <:!:section_7
     wait()
 
@@ -207,16 +205,16 @@ async def main(should_wait_input: bool):
             TransactionArgument(cap_update_table, Serializer.struct),
         ],
     )
-    signed_transaction = await rest_client.create_signed_transaction(
+    signed_transaction = await supra_client.create_signed_transaction(
         deedee, TransactionPayload(entry_function)
     )
-    account_data = await rest_client.account(deedee.address())
+    account_data = await supra_client.account(deedee.address())
     print(f"Auth key pre-rotation: {account_data['authentication_key']}")
 
-    tx_hash = await rest_client.submit_transaction(signed_transaction)
+    tx_hash = await supra_client.submit_transaction(signed_transaction)
     print(f"Transaction hash:      {tx_hash}")
 
-    account_data = await rest_client.account(deedee.address())
+    account_data = await supra_client.account(deedee.address())
     print(f"New auth key:          {account_data['authentication_key']}")
     print(f"1st multisig address:  {multisig_address}")  # <:!:section_9
     wait()
@@ -262,10 +260,10 @@ async def main(should_wait_input: bool):
         sender=deedee.address(),
         sequence_number=1,
         payload=TransactionPayload(payload),
-        max_gas_amount=rest_client.client_config.max_gas_amount,
-        gas_unit_price=rest_client.client_config.gas_unit_price,
+        max_gas_amount=supra_client.transaction_config.max_gas_amount,
+        gas_unit_price=supra_client.transaction_config.gas_unit_price,
         expiration_timestamps_secs=(
-            int(time.time()) + rest_client.client_config.expiration_ttl
+            int(time.time()) + supra_client.transaction_config.expiration_ttl
         ),
         chain_id=chain_id,
     )
@@ -280,10 +278,10 @@ async def main(should_wait_input: bool):
     )
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
-    tx_hash = await rest_client.submit_transaction(signed_transaction)
+    tx_hash = await supra_client.submit_transaction(signed_transaction)
     print(f"\nTransaction hash: {tx_hash}")
 
-    registry = await rest_client.account_resource(
+    registry = await supra_client.account_resource(
         deedee.address(), "0x1::code::PackageRegistry"
     )
     package_name = registry["data"]["packages"][0]["name"]
@@ -332,10 +330,10 @@ async def main(should_wait_input: bool):
         sender=deedee.address(),
         sequence_number=2,
         payload=TransactionPayload(entry_function_payload),
-        max_gas_amount=rest_client.client_config.max_gas_amount,
-        gas_unit_price=rest_client.client_config.gas_unit_price,
+        max_gas_amount=supra_client.transaction_config.max_gas_amount,
+        gas_unit_price=supra_client.transaction_config.gas_unit_price,
         expiration_timestamps_secs=(
-            int(time.time()) + rest_client.client_config.expiration_ttl
+            int(time.time()) + supra_client.transaction_config.expiration_ttl
         ),
         chain_id=chain_id,
     )
@@ -353,10 +351,10 @@ async def main(should_wait_input: bool):
     )
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
-    tx_hash = await rest_client.submit_transaction(signed_transaction)
+    tx_hash = await supra_client.submit_transaction(signed_transaction)
     print(f"\nTransaction hash: {tx_hash}")
 
-    registry = await rest_client.account_resource(
+    registry = await supra_client.account_resource(
         deedee.address(), "0x1::code::PackageRegistry"
     )
     n_upgrades = registry["data"]["packages"][0]["upgrade_number"]
@@ -380,10 +378,10 @@ async def main(should_wait_input: bool):
         sender=deedee.address(),
         sequence_number=3,
         payload=TransactionPayload(script_payload),
-        max_gas_amount=rest_client.client_config.max_gas_amount,
-        gas_unit_price=rest_client.client_config.gas_unit_price,
+        max_gas_amount=supra_client.transaction_config.max_gas_amount,
+        gas_unit_price=supra_client.transaction_config.gas_unit_price,
         expiration_timestamps_secs=(
-            int(time.time()) + rest_client.client_config.expiration_ttl
+            int(time.time()) + supra_client.transaction_config.expiration_ttl
         ),
         chain_id=chain_id,
     )
@@ -400,17 +398,19 @@ async def main(should_wait_input: bool):
     )
 
     signed_transaction = SignedTransaction(raw_transaction, authenticator)
-    tx_hash = await rest_client.submit_transaction(signed_transaction)
+    tx_hash = await supra_client.submit_transaction(signed_transaction)
     print(f"Transaction hash: {tx_hash}")
 
-    alice_balance = await rest_client.account_supra_balance(alice.address())
-    bob_balance = await rest_client.account_supra_balance(bob.address())
-    chad_balance = await rest_client.account_supra_balance(chad.address())
-    multisig_balance = await rest_client.account_supra_balance(multisig_address)
+    alice_balance = await supra_client.account_supra_balance(alice.address())
+    bob_balance = await supra_client.account_supra_balance(bob.address())
+    chad_balance = await supra_client.account_supra_balance(chad.address())
+    multisig_balance = await supra_client.account_supra_balance(multisig_address)
     print(f"Alice's balance:  {alice_balance}")
     print(f"Bob's balance:    {bob_balance}")
     print(f"Chad's balance:   {chad_balance}")
     print(f"Multisig balance: {multisig_balance}")
+
+    await supra_client.close()
 
 
 if __name__ == "__main__":

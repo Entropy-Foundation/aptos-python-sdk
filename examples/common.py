@@ -7,6 +7,6 @@ import os
 SUPRA_CORE_PATH = os.getenv("SUPRA_CORE_PATH", os.path.abspath("../aptos-core"))
 FAUCET_URL = os.getenv(
     "SUPRA_FAUCET_URL",
-    "https://rpc-testnet.supra.com/",
+    "http://localhost:27001/",
 )
-NODE_URL = os.getenv("SUPRA_NODE_URL", "https://rpc-testnet.supra.com/")
+RPC_NODE_URL = os.getenv("SUPRA_RPC_NODE_URL", "http://localhost:27001/")

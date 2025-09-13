@@ -5,10 +5,10 @@
 import asyncio
 import json
 
-from examples.common import FAUCET_URL, NODE_URL
+from examples.common import RPC_NODE_URL
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
-from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.clients.rest import SupraClient
 from supra_sdk.supra_token_client import (
     Collection,
     Object,
@@ -49,9 +49,8 @@ async def get_token_data(
 
 
 async def main():
-    rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
-    token_client = SupraTokenClient(rest_client)
+    supra_client = SupraClient(RPC_NODE_URL)
+    token_client = SupraTokenClient(supra_client)
 
     alice = Account.generate()
     bob = Account.generate()
@@ -63,8 +62,8 @@ async def main():
     print(f"Alice account address: {alice.address()}")
     print(f"Bob account address: {bob.address()}")
 
-    await faucet_client.faucet(alice.address())
-    await faucet_client.faucet(bob.address())
+    await supra_client.faucet(alice.address())
+    await supra_client.faucet(bob.address())
 
     print("\n=== Creating Collection and Token ===")
 
@@ -137,7 +136,7 @@ async def main():
 
     # Transfer the token back to Alice
     print("\n=== Transferring the token back to Alice ===")
-    txn_hash = await token_client.transfer_token(
+    await token_client.transfer_token(
         bob,
         token_addr,
         alice.address(),
@@ -147,8 +146,7 @@ async def main():
     obj_resources = await token_client.read_object(token_addr)
     print(f"Token owner: {owners[str(get_owner(obj_resources))]}\n")
 
-    await rest_client.close()
-    await faucet_client.close()
+    await supra_client.close()
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import typing
-import unittest
 
 from supra_sdk.account_address import AccountAddress
 from supra_sdk.bcs import Deserializable, Deserializer, Serializable, Serializer
@@ -370,21 +369,3 @@ class StructTag(Deserializable, Serializable):
         serializer.str(self.module)
         serializer.str(self.name)
         serializer.sequence(self.type_args, Serializer.struct)
-
-
-class Test(unittest.TestCase):
-    def test_nested_structs(self):
-        l0 = "0x0::l0::L0"
-        l10 = "0x1::l10::L10"
-        l20 = "0x2::l20::L20"
-        l11 = "0x1::l11::L11"
-        composite = f"{l0}<{l10}<{l20}>, {l11}>"
-        derived = StructTag.from_str(composite)
-        self.assertEqual(composite, f"{derived}")
-        in_bytes = derived.to_bytes()
-        from_bytes = StructTag.from_bytes(in_bytes)
-        self.assertEqual(derived, from_bytes)
-
-
-if __name__ == "__main__":
-    unittest.main()

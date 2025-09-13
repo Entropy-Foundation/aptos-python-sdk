@@ -160,3 +160,4 @@ cython_debug/
 temp_**
 supra_node_logs
 supra_history
+docs/modules.rst
