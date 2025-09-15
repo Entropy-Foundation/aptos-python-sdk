@@ -13,7 +13,7 @@ class ConsensusRestClient(RestClient):
     """A class that provides methods to invoke `Consensus` REST endpoints from a Supra RPC node.
 
     Attributes:
-        api_client (ApiClient): Inherited from `RestClient`. Used to send HTTP requests to the Supra RPC node.
+        api_client (supra_sdk.clients.api_client.ApiClient): Inherited from `RestClient`. Used to send HTTP requests to the Supra RPC node.
 
     """
 

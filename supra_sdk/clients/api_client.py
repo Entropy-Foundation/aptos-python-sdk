@@ -12,6 +12,7 @@ import httpx
 from supra_sdk.metadata import Metadata
 
 
+
 @dataclass
 class ApiClientConfig:
     """Holds configuration options related to the generic API client.

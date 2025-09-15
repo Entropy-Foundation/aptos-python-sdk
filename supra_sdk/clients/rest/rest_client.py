@@ -11,7 +11,7 @@ class RestClient:
     client classes can inherit from `RestClient` to reuse this functionality.
 
     Attributes:
-        api_client (ApiClient): The API client instance used to perform HTTP requests against the REST API.
+        api_client (supra_sdk.clients.api_client.ApiClient): The API client instance used to perform HTTP requests against the REST API.
 
     """
 
@@ -21,7 +21,7 @@ class RestClient:
         """Initialize a `RestClient` instance.
 
         Args:
-            api_client (ApiClient): An instance of `ApiClient` responsible for managing HTTP requests.
+            api_client (supra_sdk.clients.api_client.ApiClient): An instance of `ApiClient` responsible for managing HTTP requests.
 
         """
         self.api_client = api_client

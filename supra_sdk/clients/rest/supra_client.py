@@ -98,7 +98,7 @@ class SupraClient(
 
     Attributes:
         _chain_id (int | None): The chain-id of the network.
-        api_client (ApiClient): Inherited from `RestClient`. Used to send HTTP requests to the Supra RPC node.
+        api_client (supra_sdk.clients.api_client.ApiClient): Inherited from `RestClient`. Used to send HTTP requests to the Supra RPC node.
 
     """
 
