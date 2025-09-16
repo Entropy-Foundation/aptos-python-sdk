@@ -668,7 +668,7 @@ class SupraClient(
             str | None: Faucet transaction hash if faucet request is accepted else None.
 
         """
-        may_be_tx_hash = await self.fund_with_faucet(address)
+        may_be_tx_hash = await super().faucet(address)
         if wait_for_faucet:
             if not may_be_tx_hash:
                 raise FaucetRequestNotAcceptedError

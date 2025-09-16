@@ -19,7 +19,7 @@ class FaucetRestClient(RestClient):
 
     """
 
-    async def fund_with_faucet(self, address: AccountAddress) -> str | None:
+    async def faucet(self, address: AccountAddress) -> str | None:
         """Requests faucet funds to be sent to the given account address.
 
         Args:
