@@ -1,29 +1,17 @@
-supra\_sdk.clients package
+Clients
 ==========================
 
-Subpackages
------------
-
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 8
+   :caption: Rest
 
    supra_sdk.clients.rest
 
-Submodules
-----------
 
-supra\_sdk.clients.api\_client module
+Api Client
 -------------------------------------
 
 .. automodule:: supra_sdk.clients.api_client
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: supra_sdk.clients
    :members:
    :show-inheritance:
    :undoc-members:

@@ -1,10 +1,8 @@
-supra\_sdk.clients.rest package
+Rest
 ===============================
 
-Submodules
-----------
 
-supra\_sdk.clients.rest.account module
+Account
 --------------------------------------
 
 .. automodule:: supra_sdk.clients.rest.account
@@ -12,7 +10,7 @@ supra\_sdk.clients.rest.account module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.clients.rest.block module
+Block
 ------------------------------------
 
 .. automodule:: supra_sdk.clients.rest.block
@@ -20,7 +18,7 @@ supra\_sdk.clients.rest.block module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.clients.rest.consensus module
+Consensus
 ----------------------------------------
 
 .. automodule:: supra_sdk.clients.rest.consensus
@@ -28,7 +26,7 @@ supra\_sdk.clients.rest.consensus module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.clients.rest.faucet module
+Faucet
 -------------------------------------
 
 .. automodule:: supra_sdk.clients.rest.faucet
@@ -36,7 +34,7 @@ supra\_sdk.clients.rest.faucet module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.clients.rest.general module
+General
 --------------------------------------
 
 .. automodule:: supra_sdk.clients.rest.general
@@ -44,7 +42,7 @@ supra\_sdk.clients.rest.general module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.clients.rest.rest\_client module
+Rest Client
 -------------------------------------------
 
 .. automodule:: supra_sdk.clients.rest.rest_client
@@ -52,7 +50,7 @@ supra\_sdk.clients.rest.rest\_client module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.clients.rest.rest\_types module
+Rest Types
 ------------------------------------------
 
 .. automodule:: supra_sdk.clients.rest.rest_types
@@ -60,7 +58,7 @@ supra\_sdk.clients.rest.rest\_types module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.clients.rest.supra\_client module
+Supra Client
 --------------------------------------------
 
 .. automodule:: supra_sdk.clients.rest.supra_client
@@ -68,7 +66,7 @@ supra\_sdk.clients.rest.supra\_client module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.clients.rest.transaction module
+Transaction
 ------------------------------------------
 
 .. automodule:: supra_sdk.clients.rest.transaction
@@ -76,10 +74,3 @@ supra\_sdk.clients.rest.transaction module
    :show-inheritance:
    :undoc-members:
 
-Module contents
----------------
-
-.. automodule:: supra_sdk.clients.rest
-   :members:
-   :show-inheritance:
-   :undoc-members:

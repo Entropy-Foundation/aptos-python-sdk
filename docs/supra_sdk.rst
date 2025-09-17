@@ -1,18 +1,14 @@
-supra\_sdk package
+API
 ==================
 
-Subpackages
------------
-
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 8
+   :caption: Clients
 
    supra_sdk.clients
+   
 
-Submodules
-----------
-
-supra\_sdk.account module
+Account
 -------------------------
 
 .. automodule:: supra_sdk.account
@@ -20,7 +16,7 @@ supra\_sdk.account module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.account\_address module
+Account Address
 ----------------------------------
 
 .. automodule:: supra_sdk.account_address
@@ -28,7 +24,7 @@ supra\_sdk.account\_address module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.asymmetric\_crypto module
+Asymmetric Crypto
 ------------------------------------
 
 .. automodule:: supra_sdk.asymmetric_crypto
@@ -36,7 +32,7 @@ supra\_sdk.asymmetric\_crypto module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.asymmetric\_crypto\_wrapper module
+Asymmetric Crypto Wrapper
 ---------------------------------------------
 
 .. automodule:: supra_sdk.asymmetric_crypto_wrapper
@@ -44,7 +40,7 @@ supra\_sdk.asymmetric\_crypto\_wrapper module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.authenticator module
+Authenticator
 -------------------------------
 
 .. automodule:: supra_sdk.authenticator
@@ -52,7 +48,7 @@ supra\_sdk.authenticator module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.bcs module
+BCS
 ---------------------
 
 .. automodule:: supra_sdk.bcs
@@ -60,7 +56,7 @@ supra\_sdk.bcs module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.ed25519 module
+ED25519
 -------------------------
 
 .. automodule:: supra_sdk.ed25519
@@ -68,7 +64,7 @@ supra\_sdk.ed25519 module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.metadata module
+Metadata
 --------------------------
 
 .. automodule:: supra_sdk.metadata
@@ -76,7 +72,7 @@ supra\_sdk.metadata module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.supra\_token\_client module
+Supra Token Client
 --------------------------------------
 
 .. automodule:: supra_sdk.supra_token_client
@@ -84,7 +80,7 @@ supra\_sdk.supra\_token\_client module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.supra\_tokenv1\_client module
+Supra TokenV1 Client
 ----------------------------------------
 
 .. automodule:: supra_sdk.supra_tokenv1_client
@@ -92,7 +88,7 @@ supra\_sdk.supra\_tokenv1\_client module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.transactions module
+Transactions
 ------------------------------
 
 .. automodule:: supra_sdk.transactions
@@ -100,18 +96,10 @@ supra\_sdk.transactions module
    :show-inheritance:
    :undoc-members:
 
-supra\_sdk.type\_tag module
+Type Tag
 ---------------------------
 
 .. automodule:: supra_sdk.type_tag
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: supra_sdk
    :members:
    :show-inheritance:
    :undoc-members:

@@ -36,7 +36,7 @@ generate-api-docs:
 	uv run sphinx-apidoc -o docs supra_sdk
 	
 build-docs:
-	uv run sphinx-build -b html docs docs/_build
+	rm -rf ./docs/_build && uv run sphinx-build -b html docs docs/_build
 
 docs-all: generate-api-docs build-docs
 
