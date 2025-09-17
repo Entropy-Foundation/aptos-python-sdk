@@ -5,8 +5,6 @@
 from __future__ import annotations
 
 import typing
-import unittest
-from typing import List, Tuple
 
 from supra_sdk.account_address import AccountAddress
 from supra_sdk.bcs import Deserializable, Deserializer, Serializable, Serializer
@@ -64,9 +62,7 @@ class TypeTag(Deserializable, Serializable):
             return TypeTag(U256Tag.deserialize(deserializer))
         elif variant == TypeTag.ACCOUNT_ADDRESS:
             return TypeTag(AccountAddressTag.deserialize(deserializer))
-        elif variant == TypeTag.SIGNER:
-            raise NotImplementedError
-        elif variant == TypeTag.VECTOR:
+        elif variant == TypeTag.SIGNER or variant == TypeTag.VECTOR:
             raise NotImplementedError
         elif variant == TypeTag.STRUCT:
             return TypeTag(StructTag.deserialize(deserializer))
@@ -281,7 +277,7 @@ class StructTag(Deserializable, Serializable):
     address: AccountAddress
     module: str
     name: str
-    type_args: List[TypeTag]
+    type_args: list[TypeTag]
 
     def __init__(self, address, module, name, type_args):
         self.address = address
@@ -313,10 +309,10 @@ class StructTag(Deserializable, Serializable):
         return StructTag._from_str_internal(type_tag, 0)[0][0].value
 
     @staticmethod
-    def _from_str_internal(type_tag: str, index: int) -> Tuple[List[TypeTag], int]:
+    def _from_str_internal(type_tag: str, index: int) -> tuple[list[TypeTag], int]:
         name = ""
         tags = []
-        inner_tags: List[TypeTag] = []
+        inner_tags: list[TypeTag] = []
 
         while index < len(type_tag):
             letter = type_tag[index]
@@ -373,21 +369,3 @@ class StructTag(Deserializable, Serializable):
         serializer.str(self.module)
         serializer.str(self.name)
         serializer.sequence(self.type_args, Serializer.struct)
-
-
-class Test(unittest.TestCase):
-    def test_nested_structs(self):
-        l0 = "0x0::l0::L0"
-        l10 = "0x1::l10::L10"
-        l20 = "0x2::l20::L20"
-        l11 = "0x1::l11::L11"
-        composite = f"{l0}<{l10}<{l20}>, {l11}>"
-        derived = StructTag.from_str(composite)
-        self.assertEqual(composite, f"{derived}")
-        in_bytes = derived.to_bytes()
-        from_bytes = StructTag.from_bytes(in_bytes)
-        self.assertEqual(derived, from_bytes)
-
-
-if __name__ == "__main__":
-    unittest.main()

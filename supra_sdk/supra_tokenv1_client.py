@@ -6,7 +6,8 @@ from typing import Any
 
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
-from supra_sdk.async_client import ApiError, RestClient
+from supra_sdk.clients.rest import SupraClient
+from supra_sdk.clients.api_client import ApiError
 from supra_sdk.bcs import Serializer
 from supra_sdk.transactions import (
     EntryFunction,
@@ -20,16 +21,15 @@ U64_MAX = 18446744073709551615
 class SupraTokenV1Client:
     """A wrapper around reading and mutating SupraTokens also known as Token Objects"""
 
-    client: RestClient
+    client: SupraClient
 
-    def __init__(self, client: RestClient):
+    def __init__(self, client: SupraClient):
         self.client = client
 
     async def create_collection(
         self, account: Account, name: str, description: str, uri: str
     ) -> str:
         """Creates a new collection within the specified account"""
-
         transaction_arguments = [
             TransactionArgument(name, Serializer.str),
             TransactionArgument(description, Serializer.str),
@@ -241,7 +241,7 @@ class SupraTokenV1Client:
         creator: AccountAddress,
         collection_name: str,
         token_name: str,
-        property_version: int,
+        _property_version: int,
     ) -> Any:
         resource = await self.client.account_resource(
             creator, "0x3::token::Collections"

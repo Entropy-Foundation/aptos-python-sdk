@@ -5,16 +5,15 @@
 import asyncio
 import json
 
-from examples.common import FAUCET_URL, NODE_URL
+from examples.common import RPC_NODE_URL
 from supra_sdk.account import Account
-from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.clients.rest import SupraClient
 from supra_sdk.supra_tokenv1_client import SupraTokenV1Client
 
 
 async def main():
-    rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
-    token_client = SupraTokenV1Client(rest_client)
+    supra_client = SupraClient(RPC_NODE_URL)
+    token_client = SupraTokenV1Client(supra_client)
 
     alice = Account.generate()
     bob = Account.generate()
@@ -26,8 +25,8 @@ async def main():
     print(f"Alice account address: {alice.address()}")
     print(f"Bob account address: {bob.address()}")
 
-    await faucet_client.faucet(alice.address())
-    await faucet_client.faucet(bob.address())
+    await supra_client.faucet(alice.address())
+    await supra_client.faucet(bob.address())
 
     print("\n=== Creating Collection and Token ===")
     await token_client.create_collection(
@@ -102,8 +101,7 @@ async def main():
     print(f"Alice's token balance: {alice_balance}")
     print(f"Bob's token balance: {bob_balance}")
 
-    await rest_client.close()
-    await faucet_client.close()
+    await supra_client.close()
 
 
 if __name__ == "__main__":

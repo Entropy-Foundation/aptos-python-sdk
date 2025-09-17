@@ -3,11 +3,13 @@ import typing
 import six
 from _typeshed import Incomplete
 from behave.matchers import NoMatch as NoMatch
-from behave.model_core import BasicStatement as BasicStatement
-from behave.model_core import Replayable as Replayable
-from behave.model_core import Status as Status
-from behave.model_core import TagAndStatusStatement as TagAndStatusStatement
-from behave.model_core import TagStatement as TagStatement
+from behave.model_core import (
+    BasicStatement as BasicStatement,
+    Replayable as Replayable,
+    Status as Status,
+    TagAndStatusStatement as TagAndStatusStatement,
+    TagStatement as TagStatement,
+)
 
 class Feature(TagAndStatusStatement, Replayable):
     type: str

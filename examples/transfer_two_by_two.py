@@ -5,15 +5,16 @@
 import asyncio
 import os
 
-from examples.common import FAUCET_URL, NODE_URL
+import aiofiles
+
+from examples.common import RPC_NODE_URL
 from supra_sdk.account import Account
-from supra_sdk.async_client import FaucetClient, RestClient
+from supra_sdk.clients.rest import SupraClient
 from supra_sdk.transactions import Script, ScriptArgument, TransactionPayload
 
 
 async def main():
-    rest_client = RestClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    supra_client = SupraClient(RPC_NODE_URL)
 
     alice = Account.generate()
     bob = Account.generate()
@@ -25,15 +26,15 @@ async def main():
     print(f"Carol account address: {carol.address()}")
     print(f"David account address: {david.address()}")
 
-    await faucet_client.faucet(alice.address())
-    await faucet_client.faucet(bob.address())
-    await faucet_client.faucet(carol.address())
-    await faucet_client.faucet(david.address())
+    await supra_client.faucet(alice.address())
+    await supra_client.faucet(bob.address())
+    await supra_client.faucet(carol.address())
+    await supra_client.faucet(david.address())
 
-    alice_balance = await rest_client.account_supra_balance(alice.address())
-    bob_balance = await rest_client.account_supra_balance(bob.address())
-    carol_balance = await rest_client.account_supra_balance(carol.address())
-    david_balance = await rest_client.account_supra_balance(david.address())
+    alice_balance = await supra_client.account_supra_balance(alice.address())
+    bob_balance = await supra_client.account_supra_balance(bob.address())
+    carol_balance = await supra_client.account_supra_balance(carol.address())
+    david_balance = await supra_client.account_supra_balance(david.address())
 
     print("\n=== Initial Balances ===")
     print(f"Alice: {alice_balance}")
@@ -43,8 +44,8 @@ async def main():
 
     path = os.path.dirname(__file__)
     filepath = os.path.join(path, "two_by_two_transfer.mv")
-    with open(filepath, mode="rb") as file:
-        code = file.read()
+    async with aiofiles.open(filepath, mode="rb") as file:
+        code = await file.read()
 
     script_arguments = [
         ScriptArgument(ScriptArgument.U64, 100),
@@ -55,15 +56,15 @@ async def main():
     ]
 
     transaction_payload = TransactionPayload(Script(code, [], script_arguments))
-    signed_transaction = await rest_client.create_multi_agent_transaction(
+    signed_transaction = await supra_client.create_multi_agent_transaction(
         alice, [bob], transaction_payload
     )
-    await rest_client.submit_transaction(signed_transaction)
+    await supra_client.submit_transaction(signed_transaction)
 
-    alice_balance = await rest_client.account_supra_balance(alice.address())
-    bob_balance = await rest_client.account_supra_balance(bob.address())
-    carol_balance = await rest_client.account_supra_balance(carol.address())
-    david_balance = await rest_client.account_supra_balance(david.address())
+    alice_balance = await supra_client.account_supra_balance(alice.address())
+    bob_balance = await supra_client.account_supra_balance(bob.address())
+    carol_balance = await supra_client.account_supra_balance(carol.address())
+    david_balance = await supra_client.account_supra_balance(david.address())
 
     print("\n=== Final Balances ===")
     print(f"Alice: {alice_balance}")
@@ -71,8 +72,8 @@ async def main():
     print(f"Carol: {carol_balance}")
     print(f"David: {david_balance}")
 
-    await rest_client.close()
-    await faucet_client.close()
+    await supra_client.close()
+    await supra_client.close()
 
 
 if __name__ == "__main__":

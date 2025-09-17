@@ -2,8 +2,7 @@
 # Parts of the project are originally copyright © Aptos Foundation
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-This example depends on the MoonCoin.move module.
+"""This example depends on the MoonCoin.move module.
 
 Steps:
     * `cd ~/aptos-core/aptos-move/move-examples/moon_coin`
@@ -13,13 +12,15 @@ Steps:
 
 import asyncio
 import os
-import subprocess
 
-from examples.common import FAUCET_URL, NODE_URL, SUPRA_CORE_PATH
+import aiofiles
+
+from examples.common import RPC_NODE_URL, SUPRA_CORE_PATH
 from supra_sdk.account import Account
 from supra_sdk.account_address import AccountAddress
-from supra_sdk.async_client import FaucetClient, RestClient
 from supra_sdk.bcs import Serializer
+from supra_sdk.clients.api_client import ApiError
+from supra_sdk.clients.rest import SupraClient
 from supra_sdk.transactions import (
     EntryFunction,
     TransactionArgument,
@@ -28,10 +29,9 @@ from supra_sdk.transactions import (
 from supra_sdk.type_tag import StructTag, TypeTag
 
 
-class CoinClient(RestClient):
+class CoinClient(SupraClient):
     async def register_coin(self, coin_address: AccountAddress, sender: Account) -> str:
         """Register the receiver account to receive transfers for the new coin."""
-
         payload = EntryFunction.natural(
             "0x1::managed_coin",
             "register",
@@ -47,7 +47,6 @@ class CoinClient(RestClient):
         self, minter: Account, receiver_address: AccountAddress, amount: int
     ) -> str:
         """Mints the newly created coin to a specified receiver address."""
-
         payload = EntryFunction.natural(
             "0x1::managed_coin",
             "mint",
@@ -79,59 +78,60 @@ async def main():
     print(f"Alice account address: {alice.address()}")
     print(f"Bob account address: {bob.address()}")
 
-    rest_client = CoinClient(NODE_URL)
-    faucet_client = FaucetClient(FAUCET_URL, rest_client)
+    supra_client = CoinClient(RPC_NODE_URL)
 
-    await faucet_client.faucet(alice.address())
-    await faucet_client.faucet(bob.address())
+    await supra_client.faucet(alice.address())
+    await supra_client.faucet(bob.address())
 
     moon_coin_path = f"{SUPRA_CORE_PATH}/aptos-move/move-examples/moon_coin/"
     command = (
         f"supra move tool compile "
         f"--save-metadata "
         f"--package-dir {moon_coin_path} "
-        f"--named-addresses MoonCoin={str(alice.address())}"
+        f"--named-addresses MoonCoin={alice.address()!s}"
     )
     print(f"Running supra CLI command: {command}\n")
-    subprocess.run(command.split(), stdout=subprocess.PIPE)
+    process = await asyncio.create_subprocess_exec(*command.split())
+    await process.wait()
+    assert process.returncode == 0, "supra move tool compile failed"
 
     module_path = os.path.join(
         moon_coin_path, "build", "Examples", "bytecode_modules", "moon_coin.mv"
     )
-    with open(module_path, "rb") as f:
-        module = f.read()
+    async with aiofiles.open(module_path, "rb") as f:
+        module = await f.read()
 
     metadata_path = os.path.join(
         moon_coin_path, "build", "Examples", "package-metadata.bcs"
     )
-    with open(metadata_path, "rb") as f:
-        metadata = f.read()
+    async with aiofiles.open(metadata_path, "rb") as f:
+        metadata = await f.read()
 
     print("\nPublishing MoonCoin package.")
-    await rest_client.publish_package(alice, metadata, [module])
+    await supra_client.publish_package(alice, metadata, [module])
 
     print("\nBob registers the newly created coin so he can receive it from Alice.")
-    await rest_client.register_coin(alice.address(), bob)
-    balance = await rest_client.get_balance(alice.address(), bob.address())
+    await supra_client.register_coin(alice.address(), bob)
+    balance = await supra_client.get_balance(alice.address(), bob.address())
     print(f"Bob's initial MoonCoin balance: {balance}")
 
     print("Alice mints Bob some of the new coin.")
-    await rest_client.mint_coin(alice, bob.address(), 100)
-    balance = await rest_client.get_balance(alice.address(), bob.address())
+    await supra_client.mint_coin(alice, bob.address(), 100)
+    balance = await supra_client.get_balance(alice.address(), bob.address())
     print(f"Bob's updated MoonCoin balance: {balance}")
 
     try:
-        maybe_balance = await rest_client.get_balance(alice.address(), alice.address())
-    except Exception:
+        maybe_balance = await supra_client.get_balance(alice.address(), alice.address())
+    except ApiError:
         maybe_balance = None
     print(f"Bob will transfer to Alice, her balance: {maybe_balance}")
-    txn_hash = await rest_client.transfer_coins(
+    txn_hash = await supra_client.transfer_coins(
         bob, alice.address(), f"{alice.address()}::moon_coin::MoonCoin", 5
     )
-    await rest_client.wait_for_transaction(txn_hash)
-    balance = await rest_client.get_balance(alice.address(), alice.address())
+    await supra_client.wait_for_transaction(txn_hash)
+    balance = await supra_client.get_balance(alice.address(), alice.address())
     print(f"Alice's updated MoonCoin balance: {balance}")
-    balance = await rest_client.get_balance(alice.address(), bob.address())
+    balance = await supra_client.get_balance(alice.address(), bob.address())
     print(f"Bob's updated MoonCoin balance: {balance}")
 
 

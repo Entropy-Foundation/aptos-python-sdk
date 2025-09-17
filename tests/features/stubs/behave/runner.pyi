@@ -5,11 +5,13 @@ from behave._types import ExceptionUtil as ExceptionUtil
 from behave.capture import CaptureController as CaptureController
 from behave.configuration import ConfigError as ConfigError
 from behave.formatter._registry import make_formatters as make_formatters
-from behave.runner_util import PathManager as PathManager
-from behave.runner_util import collect_feature_locations as collect_feature_locations
-from behave.runner_util import exec_file as exec_file
-from behave.runner_util import load_step_modules as load_step_modules
-from behave.runner_util import parse_features as parse_features
+from behave.runner_util import (
+    PathManager as PathManager,
+    collect_feature_locations as collect_feature_locations,
+    exec_file as exec_file,
+    load_step_modules as load_step_modules,
+    parse_features as parse_features,
+)
 
 class CleanupError(RuntimeError): ...
 class ContextMaskWarning(UserWarning): ...

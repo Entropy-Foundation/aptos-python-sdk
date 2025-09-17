@@ -1,11 +1,12 @@
 from _typeshed import Incomplete
 from behave import i18n as i18n
 from behave.formatter.base import Formatter as Formatter
-from behave.step_registry import StepRegistry as StepRegistry
-from behave.step_registry import registry as registry
-from behave.textutil import compute_words_maxsize as compute_words_maxsize
-from behave.textutil import indent as indent
-from behave.textutil import make_indentation as make_indentation
+from behave.step_registry import StepRegistry as StepRegistry, registry as registry
+from behave.textutil import (
+    compute_words_maxsize as compute_words_maxsize,
+    indent as indent,
+    make_indentation as make_indentation,
+)
 
 class AbstractStepsFormatter(Formatter):
     step_types: Incomplete

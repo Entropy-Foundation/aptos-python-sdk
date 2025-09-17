@@ -1,9 +1,13 @@
 from _typeshed import Incomplete
-from behave._types import ChainedExceptionUtil as ChainedExceptionUtil
-from behave._types import ExceptionUtil as ExceptionUtil
-from behave.model_core import Argument as Argument
-from behave.model_core import FileLocation as FileLocation
-from behave.model_core import Replayable as Replayable
+from behave._types import (
+    ChainedExceptionUtil as ChainedExceptionUtil,
+    ExceptionUtil as ExceptionUtil,
+)
+from behave.model_core import (
+    Argument as Argument,
+    FileLocation as FileLocation,
+    Replayable as Replayable,
+)
 
 class StepParseError(ValueError):
     def __init__(

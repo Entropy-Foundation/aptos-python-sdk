@@ -1,10 +1,11 @@
 from _typeshed import Incomplete
-from behave.formatter.ansi_escapes import escapes as escapes
-from behave.formatter.ansi_escapes import up as up
+from behave.formatter.ansi_escapes import escapes as escapes, up as up
 from behave.formatter.base import Formatter as Formatter
 from behave.model_core import Status as Status
-from behave.model_describe import escape_cell as escape_cell
-from behave.model_describe import escape_triple_quotes as escape_triple_quotes
+from behave.model_describe import (
+    escape_cell as escape_cell,
+    escape_triple_quotes as escape_triple_quotes,
+)
 from behave.textutil import indent as indent
 
 DEFAULT_WIDTH: int
